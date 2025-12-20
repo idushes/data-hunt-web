@@ -3,32 +3,20 @@ export default function Zones() {
         {
             title: 'Growth Zone',
             description: 'High-risk, high-reward assets. Track volatility and potential upside with precision.',
-            gradient: 'from-blue-500 to-cyan-400',
-            icon: (
-                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-            )
+            image: '/assets/growth-visual.png',
+            gradient: 'from-blue-500 to-cyan-400'
         },
         {
             title: 'Stability Zone',
             description: 'Stablecoins and low-risk assets. The bedrock of your portfolio against market turbulence.',
-            gradient: 'from-purple-500 to-pink-500',
-            icon: (
-                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-            )
+            image: '/assets/stability-visual.png',
+            gradient: 'from-purple-500 to-pink-500'
         },
         {
             title: 'Yield Zone',
             description: 'Liquidity pools and staking. Automatically calculate APY/APR and farming rewards.',
-            gradient: 'from-green-500 to-emerald-400',
-            icon: (
-                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-            )
+            image: '/assets/yield-visual.png',
+            gradient: 'from-green-500 to-emerald-400'
         }
     ];
 
@@ -48,12 +36,19 @@ export default function Zones() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {zones.map((zone, index) => (
-                        <div key={index} className="group glass-panel p-8 rounded-2xl border border-white/5 hover:border-white/20 transition-all duration-300 hover:-translate-y-2">
-                            <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${zone.gradient} flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                                {zone.icon}
+                        <div key={index} className="group glass-panel p-6 rounded-2xl border border-white/5 hover:border-white/20 transition-all duration-300 hover:-translate-y-2 overflow-hidden relative">
+
+                            <div className="h-48 w-full mb-6 relative rounded-xl overflow-hidden">
+                                <div className={`absolute inset-0 bg-gradient-to-br ${zone.gradient} opacity-20 group-hover:opacity-30 transition-opacity`} />
+                                <img
+                                    src={zone.image}
+                                    alt={zone.title}
+                                    className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
+                                />
                             </div>
+
                             <h3 className="text-2xl font-bold mb-3">{zone.title}</h3>
-                            <p className="text-gray-400 leading-relaxed">
+                            <p className="text-gray-400 leading-relaxed relative z-10">
                                 {zone.description}
                             </p>
                         </div>
