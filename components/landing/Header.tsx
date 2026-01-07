@@ -2,13 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import AuthModal from '@/components/auth/AuthModal';
 
 export default function Header() {
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const pathname = usePathname();
 
     useEffect(() => {
         // Check auth status on mount and when modal closes
@@ -43,13 +41,24 @@ export default function Header() {
 
                     <div className="flex items-center gap-4">
                         {isAuthenticated ? (
-                            <Link
-                                href="/account"
-                                className="px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all border border-white/5 backdrop-blur-sm flex items-center gap-2"
-                            >
-                                <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                                Account
-                            </Link>
+                            <>
+                                <Link
+                                    href="/account"
+                                    className="px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all border border-white/5 backdrop-blur-sm flex items-center gap-2"
+                                >
+                                    <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                                    Account
+                                </Link>
+                                <Link
+                                    href="/history"
+                                    className="px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all border border-white/5 backdrop-blur-sm flex items-center gap-2"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-blue-400">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                    </svg>
+                                    History
+                                </Link>
+                            </>
                         ) : (
                             <button
                                 onClick={() => setIsAuthModalOpen(true)}
