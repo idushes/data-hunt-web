@@ -32,6 +32,11 @@ export default function AccountPage() {
     const [account, setAccount] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
 
+    // Update states
+    const [updatingProtocols, setUpdatingProtocols] = useState(false);
+    const [updatingTokens, setUpdatingTokens] = useState(false);
+    const [updatingHistory, setUpdatingHistory] = useState(false);
+
     // Initial check and fetch
     useEffect(() => {
         const storedToken = localStorage.getItem('data_hunt_token');
@@ -272,6 +277,53 @@ export default function AccountPage() {
         }
     };
 
+    const handleUpdate = async (type: 'protocols' | 'tokens' | 'history') => {
+        if (!accessToken) return;
+        
+        let endpoint = '';
+        let setLocalLoading: (v: boolean) => void;
+
+        switch (type) {
+            case 'protocols':
+                endpoint = '/debank/all_complex_protocol_list';
+                setLocalLoading = setUpdatingProtocols;
+                break;
+            case 'tokens':
+                endpoint = '/debank/all_token_list';
+                setLocalLoading = setUpdatingTokens;
+                break;
+            case 'history':
+                endpoint = '/debank/all_history';
+                setLocalLoading = setUpdatingHistory;
+                break;
+        }
+
+        setLocalLoading(true);
+        setStatus(`Updating ${type}...`);
+        
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://0.0.0.0:8111';
+            const response = await fetch(`${apiUrl}${endpoint}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
+
+            if (response.ok) {
+                setStatus(`Successfully updated ${type}`);
+                setTimeout(() => setStatus(''), 3000);
+            } else {
+                const data = await response.json();
+                setStatus(`Failed to update ${type}: ${data.detail || 'Unknown error'}`);
+            }
+        } catch (error: any) {
+            setStatus(`Error updating ${type}: ${error.message}`);
+        } finally {
+            setLocalLoading(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-black text-white flex items-center justify-center">
@@ -396,6 +448,60 @@ export default function AccountPage() {
                                 {addresses.length === 0 && (
                                     <p className="text-zinc-500 text-sm text-center py-4">No addresses linked yet.</p>
                                 )}
+                            </div>
+                        </div>
+
+                        {/* Data Updates */}
+                        <div className="bg-zinc-900/50 border border-white/5 rounded-2xl p-6">
+                            <h2 className="text-xl font-semibold mb-4">Data Updates</h2>
+                            <p className="text-sm text-zinc-400 mb-6">
+                                Manually trigger data updates for your linked addresses. This may take a few minutes.
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <button
+                                    onClick={() => handleUpdate('protocols')}
+                                    disabled={updatingProtocols}
+                                    className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-zinc-950/50 border border-white/5 hover:bg-zinc-800/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {updatingProtocols ? (
+                                        <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                    ) : (
+                                        <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                                        </svg>
+                                    )}
+                                    <span className="text-sm font-medium text-zinc-300">Protocols</span>
+                                </button>
+
+                                <button
+                                    onClick={() => handleUpdate('tokens')}
+                                    disabled={updatingTokens}
+                                    className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-zinc-950/50 border border-white/5 hover:bg-zinc-800/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {updatingTokens ? (
+                                        <div className="w-5 h-5 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                                    ) : (
+                                        <svg className="w-6 h-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    )}
+                                    <span className="text-sm font-medium text-zinc-300">Tokens</span>
+                                </button>
+
+                                <button
+                                    onClick={() => handleUpdate('history')}
+                                    disabled={updatingHistory}
+                                    className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-zinc-950/50 border border-white/5 hover:bg-zinc-800/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {updatingHistory ? (
+                                        <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                                    ) : (
+                                        <svg className="w-6 h-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    )}
+                                    <span className="text-sm font-medium text-zinc-300">History</span>
+                                </button>
                             </div>
                         </div>
                     </div>
