@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/landing/Header';
 import TransactionRow, { Transaction } from '@/components/history/TransactionRow';
 
 const LIMIT_OPTIONS = [25, 50, 100, 200];
 
-export default function HistoryPage() {
+function HistoryContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -145,5 +145,17 @@ export default function HistoryPage() {
                 </div>
             </main>
         </div>
+    );
+}
+
+export default function HistoryPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex justify-center items-center py-20 min-h-screen bg-black">
+                <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+            </div>
+        }>
+            <HistoryContent />
+        </Suspense>
     );
 }
