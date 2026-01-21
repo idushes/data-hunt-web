@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/landing/Header';
 import TransactionRow, { Transaction } from '@/components/history/TransactionRow';
@@ -15,6 +15,7 @@ function HistoryContent() {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [accessToken, setAccessToken] = useState<string | null>(null);
     const [hasMore, setHasMore] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     // Params
     const skipParam = searchParams.get('skip');
@@ -33,39 +34,45 @@ function HistoryContent() {
         setAccessToken(storedToken);
     }, [router]);
 
-    useEffect(() => {
+    const fetchHistory = useCallback(async (isRefresh = false) => {
         if (!accessToken) return;
 
-        const fetchData = async () => {
+        if (isRefresh) {
+            setIsRefreshing(true);
+        } else {
             setLoading(true);
-            try {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://0.0.0.0:8111';
-                const res = await fetch(`${apiUrl}/debank/history/readable?skip=${skip}&limit=${limit}&include_scam=false`, {
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`
-                    }
-                });
+        }
 
-                if (res.ok) {
-                    const data: Transaction[] = await res.json();
-                    setTransactions(data);
-                    if (data.length < limit) {
-                        setHasMore(false);
-                    } else {
-                        setHasMore(true);
-                    }
-                } else {
-                    console.error('Failed to fetch history');
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://0.0.0.0:8111';
+            const res = await fetch(`${apiUrl}/debank/history/readable?skip=${skip}&limit=${limit}&include_scam=false`, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
                 }
-            } catch (error) {
-                console.error('Error fetching history:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
+            });
 
-        fetchData();
+            if (res.ok) {
+                const data: Transaction[] = await res.json();
+                setTransactions(data);
+                if (data.length < limit) {
+                    setHasMore(false);
+                } else {
+                    setHasMore(true);
+                }
+            } else {
+                console.error('Failed to fetch history');
+            }
+        } catch (error) {
+            console.error('Error fetching history:', error);
+        } finally {
+            setLoading(false);
+            setIsRefreshing(false);
+        }
     }, [accessToken, skip, limit]);
+
+    useEffect(() => {
+        fetchHistory();
+    }, [fetchHistory]);
 
     const handleLimitChange = (newLimit: number) => {
         router.push(`/history?skip=0&limit=${newLimit}`);
@@ -81,6 +88,10 @@ function HistoryContent() {
         router.push(`/history?skip=${newSkip}&limit=${limit}`);
     };
 
+    const handleRefresh = () => {
+        fetchHistory(true);
+    };
+
     return (
         <div className="min-h-screen bg-black text-gray-100">
             <Header />
@@ -94,6 +105,21 @@ function HistoryContent() {
                         <p className="text-zinc-400 mt-1 text-sm">View all your cross-chain activity</p>
                     </div>
                     <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleRefresh}
+                            disabled={loading || isRefreshing}
+                            className={`p-2.5 rounded-lg border border-zinc-800 bg-zinc-900 text-white hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+                            title="Refresh History"
+                        >
+                            <svg 
+                                className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} 
+                                fill="none" 
+                                viewBox="0 0 24 24" 
+                                stroke="currentColor"
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
                         <select
                             value={limit}
                             onChange={(e) => handleLimitChange(Number(e.target.value))}
