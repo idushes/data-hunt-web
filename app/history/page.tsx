@@ -88,8 +88,32 @@ function HistoryContent() {
         router.push(`/history?skip=${newSkip}&limit=${limit}`);
     };
 
-    const handleRefresh = () => {
-        fetchHistory(true);
+    const handleRefresh = async () => {
+        if (!accessToken) return;
+        setIsRefreshing(true);
+        
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://0.0.0.0:8111';
+            // Trigger backend update
+            const updateRes = await fetch(`${apiUrl}/debank/all_history`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
+
+            if (!updateRes.ok) {
+                console.error('Failed to trigger history update');
+                // Optional: show error toast/notification
+            }
+            
+            // Fetch updated list regardless of update success (in case some data exists)
+            // Passing true to skip setting isRefreshing again since we handle it here
+            await fetchHistory(true); 
+        } catch (error) {
+            console.error('Error refreshing history:', error);
+            setIsRefreshing(false);
+        }
     };
 
     return (
