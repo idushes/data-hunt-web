@@ -95,6 +95,7 @@ function HistoryContent() {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://0.0.0.0:8111';
             // Trigger backend update
+            // Step 1: Sync transactions from DeBank
             const updateRes = await fetch(`${apiUrl}/debank/all_history`, {
                 method: 'POST',
                 headers: {
@@ -104,11 +105,21 @@ function HistoryContent() {
 
             if (!updateRes.ok) {
                 console.error('Failed to trigger history update');
-                // Optional: show error toast/notification
+            }
+
+            // Step 2: Enrich historical prices
+            const enrichRes = await fetch(`${apiUrl}/debank/enrich_prices`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
+
+            if (!enrichRes.ok) {
+                console.error('Failed to enrich prices');
             }
             
-            // Fetch updated list regardless of update success (in case some data exists)
-            // Passing true to skip setting isRefreshing again since we handle it here
+            // Step 3: Fetch updated history with enriched prices
             await fetchHistory(true); 
         } catch (error) {
             console.error('Error refreshing history:', error);
