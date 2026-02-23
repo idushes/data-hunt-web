@@ -8,8 +8,8 @@ export interface TokenChange {
     logo_url: string | null;
     amount: number;
     amount_raw: number;
-    value_usd: number;
-    price: number;
+    value_usd: number | null;
+    price: number | null;
 }
 
 export interface Transaction {
@@ -152,18 +152,23 @@ const TransactionRow: React.FC<TransactionRowProps> = ({ tx }) => {
                                     )}
                                     <div className="flex flex-col">
                                         <span className="font-medium text-zinc-200">{change.symbol}</span>
-                                        {change.price > 0 && <span className="text-[10px] text-zinc-500">${change.price.toLocaleString()}</span>}
+                                        {change.price != null
+                                            ? (change.price > 0 && <span className="text-[10px] text-zinc-500">${change.price.toLocaleString()}</span>)
+                                            : <span className="text-[10px] text-zinc-500 italic">price N/A</span>
+                                        }
                                     </div>
                                 </div>
                                 <div className="flex flex-col items-end">
                                     <span className={`font-mono font-medium ${directionColor}`}>
-                                        {change.value_usd !== 0
-                                            ? (() => {
-                                                const val = Math.abs(change.value_usd);
-                                                const digits = val < 1 ? 2 : 0;
-                                                return `${sign}$${val.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
-                                            })()
-                                            : '$0'
+                                        {change.value_usd != null
+                                            ? change.value_usd !== 0
+                                                ? (() => {
+                                                    const val = Math.abs(change.value_usd);
+                                                    const digits = val < 1 ? 2 : 0;
+                                                    return `${sign}$${val.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
+                                                })()
+                                                : '$0'
+                                            : <span className="italic text-zinc-500">N/A</span>
                                         }
                                     </span>
                                     {/* Token Amount (Secondary, Gray) */}
