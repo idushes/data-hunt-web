@@ -1,21 +1,25 @@
+import GrowthAnim from './GrowthAnim';
+import StabilityAnim from './StabilityAnim';
+import YieldAnim from './YieldAnim';
+
 export default function Zones() {
     const zones = [
         {
             title: 'Growth Zone',
             description: 'High-risk, high-reward assets. Track volatility and potential upside with precision.',
-            image: '/assets/growth-visual.png',
+            AnimationComponent: GrowthAnim,
             gradient: 'from-blue-500 to-cyan-400'
         },
         {
             title: 'Stability Zone',
             description: 'Stablecoins and low-risk assets. The bedrock of your portfolio against market turbulence.',
-            image: '/assets/stability-visual.png',
+            AnimationComponent: StabilityAnim,
             gradient: 'from-purple-500 to-pink-500'
         },
         {
             title: 'Yield Zone',
             description: 'Liquidity pools and staking. Automatically calculate APY/APR and farming rewards.',
-            image: '/assets/yield-visual.png',
+            AnimationComponent: YieldAnim,
             gradient: 'from-green-500 to-emerald-400'
         }
     ];
@@ -38,13 +42,11 @@ export default function Zones() {
                     {zones.map((zone, index) => (
                         <div key={index} className="group glass-panel p-6 rounded-2xl border border-white/5 hover:border-white/20 transition-all duration-300 hover:-translate-y-2 overflow-hidden relative">
 
-                            <div className="h-48 w-full mb-6 relative rounded-xl overflow-hidden">
-                                <div className={`absolute inset-0 bg-gradient-to-br ${zone.gradient} opacity-20 group-hover:opacity-30 transition-opacity`} />
-                                <img
-                                    src={zone.image}
-                                    alt={zone.title}
-                                    className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
-                                />
+                            <div className="h-48 w-full mb-6 relative rounded-xl overflow-hidden bg-black/50">
+                                <div className={`absolute inset-0 bg-gradient-to-br ${zone.gradient} opacity-20 group-hover:opacity-30 transition-opacity z-10 pointer-events-none`} />
+                                <div className="absolute inset-0 transform group-hover:scale-110 transition-transform duration-700 z-0">
+                                    <zone.AnimationComponent />
+                                </div>
                             </div>
 
                             <h3 className="text-2xl font-bold mb-3">{zone.title}</h3>

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import HeroAnim from './HeroAnim';
 
 export default function Hero() {
     return (
@@ -41,22 +42,9 @@ export default function Hero() {
 
                 {/* Dashboard Placeholder / Visual */}
                 <div className="mt-20 w-full max-w-5xl glass-panel rounded-2xl p-2 border border-white/10 shadow-2xl relative">
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-10 rounded-2xl" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-10 rounded-2xl pointer-events-none" />
                     <div className="bg-[#0A0A0A] rounded-xl overflow-hidden aspect-[16/9] md:aspect-[21/9] flex items-center justify-center relative group">
-                        {/* Abstract Chart UI */}
-                        <div className="w-full h-full p-8 flex flex-col justify-between">
-                            <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                                <div className="flex gap-4">
-                                    <div className="h-3 w-24 bg-white/10 rounded-full" />
-                                    <div className="h-3 w-16 bg-white/10 rounded-full" />
-                                </div>
-                            </div>
-                            <div className="flex items-end justify-between gap-2 h-48 mt-8">
-                                {[40, 65, 45, 80, 55, 90, 70, 85, 60, 75, 50, 95].map((h, i) => (
-                                    <div key={i} className="w-full bg-blue-500/20 rounded-t-sm hover:bg-blue-500/40 transition-colors duration-500" style={{ height: `${h}%` }}></div>
-                                ))}
-                            </div>
-                        </div>
+                        <HeroAnim className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity duration-700" />
                     </div>
                 </div>
             </div>
