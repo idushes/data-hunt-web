@@ -31,6 +31,7 @@ export default function AccountPage() {
     const [status, setStatus] = useState<string>('');
     const [account, setAccount] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
+    const [dataLoading, setDataLoading] = useState(true);
 
     // Update states
     const [updatingProtocols, setUpdatingProtocols] = useState(false);
@@ -93,8 +94,11 @@ export default function AccountPage() {
     // Data fetching once token is set
     useEffect(() => {
         if (accessToken) {
-            fetchTokens(accessToken);
-            fetchAddresses(accessToken);
+            setDataLoading(true);
+            Promise.all([
+                fetchTokens(accessToken),
+                fetchAddresses(accessToken),
+            ]).finally(() => setDataLoading(false));
         }
     }, [accessToken]);
 
@@ -324,10 +328,17 @@ export default function AccountPage() {
         }
     };
 
-    if (loading) {
+    if (loading || dataLoading) {
         return (
             <div className="min-h-screen bg-black text-white flex items-center justify-center">
-                <div className="animate-spin w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full"></div>
+                <div className="flex flex-col items-center gap-6">
+                    <div className="relative">
+                        <div className="w-12 h-12 border-2 border-blue-500/30 rounded-full"></div>
+                        <div className="absolute inset-0 w-12 h-12 border-2 border-transparent border-t-blue-500 rounded-full animate-spin"></div>
+                        <div className="absolute inset-0 w-12 h-12 border-2 border-transparent border-b-purple-500 rounded-full animate-spin" style={{ animationDuration: '1.5s', animationDirection: 'reverse' }}></div>
+                    </div>
+                    <p className="text-sm text-zinc-500 animate-pulse">Loading account data...</p>
+                </div>
             </div>
         );
     }
