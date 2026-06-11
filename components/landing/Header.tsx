@@ -39,7 +39,16 @@ export default function Header() {
                         <Link href="/#security" className="hover:text-white transition-colors">Security</Link>
                     </nav>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3 sm:gap-4">
+                        <Link
+                            href="/gmtrade"
+                            aria-label="Open GMTRADE"
+                            className="px-3 sm:px-4 py-2 text-sm font-medium bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-200 rounded-lg transition-all border border-emerald-400/20 backdrop-blur-sm flex items-center gap-2"
+                        >
+                            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                            <span className="sm:hidden">GM</span>
+                            <span className="hidden sm:inline">GMTRADE</span>
+                        </Link>
                         {isAuthenticated ? (
                             <>
                                 <Link
