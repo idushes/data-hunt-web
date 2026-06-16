@@ -7,6 +7,12 @@ import Header from "@/components/landing/Header";
 type PoolType = "GM" | "GLV";
 type PeriodKey = "1d" | "7d" | "30d" | "90d" | "1y";
 type PoolTypeFilter = "ALL" | PoolType;
+type SortKey = "favorite" | "pool" | "price" | "liquidity" | "supply" | PeriodKey;
+type SortDirection = "asc" | "desc";
+type SortState = {
+  key: SortKey;
+  direction: SortDirection;
+};
 
 type PeriodReturns = Record<PeriodKey, number | null>;
 
@@ -125,6 +131,44 @@ function gmTradePoolUrl(row: PoolRow) {
   )}`;
 }
 
+function defaultSortDirection(key: SortKey): SortDirection {
+  return key === "pool" ? "asc" : "desc";
+}
+
+function isPeriodSortKey(key: SortKey): key is PeriodKey {
+  return PERIODS.includes(key as PeriodKey);
+}
+
+function sortValue(row: PoolRow, key: SortKey, favorites: Set<string>) {
+  if (key === "favorite") return favorites.has(favoriteKeyForRow(row)) ? 1 : 0;
+  if (key === "pool") return row.name.toLowerCase();
+  if (key === "price") return row.price_usd;
+  if (key === "liquidity") return row.liquidity_usd;
+  if (key === "supply") return row.supply;
+  if (isPeriodSortKey(key)) return row.period_returns[key];
+  return "";
+}
+
+function compareSortValues(
+  left: string | number | null,
+  right: string | number | null,
+  direction: SortDirection
+) {
+  if (left === null && right === null) return 0;
+  if (left === null) return 1;
+  if (right === null) return -1;
+
+  if (typeof left === "string" && typeof right === "string") {
+    return direction === "asc"
+      ? left.localeCompare(right)
+      : right.localeCompare(left);
+  }
+
+  const leftNumber = Number(left);
+  const rightNumber = Number(right);
+  return direction === "asc" ? leftNumber - rightNumber : rightNumber - leftNumber;
+}
+
 function storedFavorites() {
   try {
     const raw = localStorage.getItem(FAVORITES_STORAGE_KEY);
@@ -184,6 +228,38 @@ function ArrowIcon() {
   );
 }
 
+function SortIcon({
+  active,
+  direction,
+}: {
+  active: boolean;
+  direction: SortDirection;
+}) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={`h-3.5 w-3.5 transition-colors ${
+        active ? "text-emerald-300" : "text-zinc-700"
+      }`}
+      fill="none"
+      viewBox="0 0 16 16"
+      stroke="currentColor"
+      strokeWidth={1.7}
+    >
+      {active && direction === "asc" ? (
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 9.5 8 5.5l4 4" />
+      ) : active ? (
+        <path strokeLinecap="round" strokeLinejoin="round" d="m4 6.5 4 4 4-4" />
+      ) : (
+        <>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 6.5 8 3.5l3 3" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="m5 9.5 3 3 3-3" />
+        </>
+      )}
+    </svg>
+  );
+}
+
 export default function GMTradePage() {
   const [data, setData] = useState<PoolsResponse | null>(null);
   const [error, setError] = useState("");
@@ -192,6 +268,7 @@ export default function GMTradePage() {
   const [typeFilter, setTypeFilter] = useState<PoolTypeFilter>("ALL");
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [sortState, setSortState] = useState<SortState | null>(null);
 
   const loadPools = useCallback(async () => {
     setLoading(true);
@@ -269,6 +346,70 @@ export default function GMTradePage() {
       return matchesType && matchesFavorite && matchesQuery;
     });
   }, [data, favorites, favoritesOnly, query, typeFilter]);
+
+  const sortedRows = useMemo(() => {
+    if (!sortState) return filteredRows;
+
+    return filteredRows
+      .map((row, index) => ({ row, index }))
+      .sort((left, right) => {
+        const comparison = compareSortValues(
+          sortValue(left.row, sortState.key, favorites),
+          sortValue(right.row, sortState.key, favorites),
+          sortState.direction
+        );
+
+        return comparison || left.index - right.index;
+      })
+      .map(({ row }) => row);
+  }, [favorites, filteredRows, sortState]);
+
+  const requestSort = useCallback((key: SortKey) => {
+    setSortState((current) => {
+      if (current?.key === key) {
+        return {
+          key,
+          direction: current.direction === "asc" ? "desc" : "asc",
+        };
+      }
+
+      return { key, direction: defaultSortDirection(key) };
+    });
+  }, []);
+
+  const sortDirectionFor = useCallback(
+    (key: SortKey) => (sortState?.key === key ? sortState.direction : undefined),
+    [sortState]
+  );
+
+  const sortableHeader = useCallback(
+    (key: SortKey, label: string, className = "px-4 py-3 font-medium") => {
+      const direction = sortDirectionFor(key);
+
+      return (
+        <th
+          className={className}
+          aria-sort={
+            direction === "asc"
+              ? "ascending"
+              : direction === "desc"
+              ? "descending"
+              : "none"
+          }
+        >
+          <button
+            type="button"
+            onClick={() => requestSort(key)}
+            className="inline-flex items-center gap-1.5 rounded-md text-left transition-colors hover:text-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70"
+          >
+            <span>{label}</span>
+            <SortIcon active={Boolean(direction)} direction={direction ?? "desc"} />
+          </button>
+        </th>
+      );
+    },
+    [requestSort, sortDirectionFor]
+  );
 
   const summaryItems = useMemo(() => {
     if (!data) return [];
@@ -435,21 +576,25 @@ export default function GMTradePage() {
               <table className="w-full min-w-[1180px] border-collapse text-left text-sm">
                 <thead className="bg-zinc-950 text-xs uppercase tracking-[0.12em] text-zinc-500">
                   <tr>
-                    <th className="w-12 px-4 py-3 font-medium">Fav</th>
-                    <th className="px-4 py-3 font-medium">Pool</th>
-                    <th className="px-4 py-3 font-medium">Price</th>
-                    <th className="px-4 py-3 font-medium">Liquidity</th>
-                    <th className="px-4 py-3 font-medium">1D</th>
-                    <th className="px-4 py-3 font-medium">7D</th>
-                    <th className="px-4 py-3 font-medium">30D</th>
-                    <th className="px-4 py-3 font-medium">90D</th>
-                    <th className="px-4 py-3 font-medium">1Y</th>
-                    <th className="px-4 py-3 font-medium">Supply</th>
+                    {sortableHeader(
+                      "favorite",
+                      "Fav",
+                      "w-12 px-4 py-3 font-medium"
+                    )}
+                    {sortableHeader("pool", "Pool")}
+                    {sortableHeader("price", "Price")}
+                    {sortableHeader("liquidity", "Liquidity")}
+                    {sortableHeader("1d", "1D")}
+                    {sortableHeader("7d", "7D")}
+                    {sortableHeader("30d", "30D")}
+                    {sortableHeader("90d", "90D")}
+                    {sortableHeader("1y", "1Y")}
+                    {sortableHeader("supply", "Supply")}
                     <th className="px-4 py-3 font-medium">Chart</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10 bg-black">
-                  {filteredRows.map((row) => (
+                  {sortedRows.map((row) => (
                     <tr key={`${row.type}-${row.mint}`} className="hover:bg-zinc-950">
                       <td className="px-4 py-4">
                         <button
