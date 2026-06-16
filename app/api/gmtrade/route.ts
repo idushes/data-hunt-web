@@ -742,13 +742,18 @@ function buildPoolsSummary(rows: PoolPerformanceRow[]) {
 
 async function buildAllPoolsResponse() {
   const [markets, gmInfos, glvInfos] = await Promise.all([
-    fetchAllMarketInfos(),
-    fetchAllGmInfos(),
-    fetchAllGlvInfos(),
+    optional(() => fetchAllMarketInfos(), {} as Record<string, MarketInfo>),
+    optional(() => fetchAllGmInfos(), {} as Record<string, GmInfo>),
+    optional(() => fetchAllGlvInfos(), {} as Record<string, GlvInfo>),
   ]);
 
   const gmMints = Object.keys(gmInfos);
   const glvMints = Object.keys(glvInfos);
+
+  if (gmMints.length === 0 && glvMints.length === 0) {
+    throw new SourceError(502, sourceUnavailableMessage);
+  }
+
   const [periodPrices, glvNames] = await Promise.all([
     fetchPeriodPrices(gmMints, glvMints),
     optional(() => fetchAssetNames(glvMints), {} as Record<string, string>),
