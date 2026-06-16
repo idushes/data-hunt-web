@@ -148,6 +148,32 @@ function formatTimestamp(value: string) {
   }).format(new Date(parsed));
 }
 
+function formatPositionDays(entryTimestamp: string, updatedTimestamp: string) {
+  const entryDate = new Date(entryTimestamp);
+  const updatedDate = new Date(updatedTimestamp);
+  const entryTime = entryDate.getTime();
+  const updatedTime = updatedDate.getTime();
+
+  if (!Number.isFinite(entryTime) || !Number.isFinite(updatedTime)) return "-";
+
+  const entryDay = Date.UTC(
+    entryDate.getUTCFullYear(),
+    entryDate.getUTCMonth(),
+    entryDate.getUTCDate()
+  );
+  const updatedDay = Date.UTC(
+    updatedDate.getUTCFullYear(),
+    updatedDate.getUTCMonth(),
+    updatedDate.getUTCDate()
+  );
+  const days = Math.max(
+    0,
+    Math.round((updatedDay - entryDay) / (24 * 60 * 60 * 1000))
+  );
+
+  return `${days.toLocaleString("en-US")} ${days === 1 ? "day" : "days"}`;
+}
+
 function returnTone(value: number | null) {
   if (value === null) return "text-zinc-500";
   if (value < 0) return "text-red-300";
@@ -889,9 +915,17 @@ export default function GMTradePage() {
                         </td>
                         <td className="px-4 py-4 font-mono">
                           {position ? (
-                            <span className="font-semibold text-emerald-200">
-                              {formatUsd(position.value_usd)}
-                            </span>
+                            <div>
+                              <p className="font-semibold text-emerald-200">
+                                {formatUsd(position.value_usd)}
+                              </p>
+                              <p className="mt-1 text-xs text-zinc-500">
+                                {formatPositionDays(
+                                  position.entry_timestamp,
+                                  position.updated_at
+                                )}
+                              </p>
+                            </div>
                           ) : (
                             <span className="text-zinc-700">-</span>
                           )}
