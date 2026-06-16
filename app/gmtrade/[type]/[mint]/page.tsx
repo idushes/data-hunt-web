@@ -2,11 +2,20 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type KeyboardEvent,
+  type PointerEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import Header from "@/components/landing/Header";
 
 type PoolType = "GM" | "GLV";
 type PeriodKey = "1d" | "7d" | "30d" | "90d" | "1y";
+type ChartRangeKey = "7d" | "30d" | "90d" | "1y" | "all" | "custom";
+type ChartScaleMode = "price" | "change";
 
 type PricePoint = {
   timestamp: string;
@@ -34,6 +43,18 @@ type ApiError = {
 };
 
 const PERIODS: PeriodKey[] = ["1d", "7d", "30d", "90d", "1y"];
+const CHART_RANGES: { key: Exclude<ChartRangeKey, "custom">; label: string; days: number | null }[] = [
+  { key: "7d", label: "7D", days: 7 },
+  { key: "30d", label: "30D", days: 30 },
+  { key: "90d", label: "90D", days: 90 },
+  { key: "1y", label: "1Y", days: 365 },
+  { key: "all", label: "All", days: null },
+];
+const CHART_SCALE_MODES: { key: ChartScaleMode; label: string }[] = [
+  { key: "price", label: "Price" },
+  { key: "change", label: "Change %" },
+];
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function shortAddress(value: string) {
   if (!value) return "";
@@ -80,14 +101,70 @@ function formatTimestamp(value: string) {
   }).format(new Date(parsed));
 }
 
-function formatDate(value: string) {
-  const parsed = Date.parse(value);
-  if (!Number.isFinite(parsed)) return value;
+function formatDate(value: string | number) {
+  const parsed = typeof value === "number" ? value : Date.parse(value);
+  if (!Number.isFinite(parsed)) return String(value);
 
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "2-digit",
   }).format(new Date(parsed));
+}
+
+function formatDateWithYear(value: string | number) {
+  const parsed = typeof value === "number" ? value : Date.parse(value);
+  if (!Number.isFinite(parsed)) return String(value);
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  }).format(new Date(parsed));
+}
+
+function dateInputValue(value: number) {
+  if (!Number.isFinite(value)) return "";
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function dateInputStart(value: string) {
+  const parsed = Date.parse(`${value}T00:00:00`);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function dateInputEnd(value: string) {
+  const parsed = Date.parse(`${value}T23:59:59`);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function percentChange(start: number, end: number) {
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start <= 0) return null;
+  return ((end - start) / start) * 100;
+}
+
+function formatSignedPercent(value: number | null) {
+  if (value === null || !Number.isFinite(value)) return "-";
+  return `${value > 0 ? "+" : ""}${value.toLocaleString("en-US", {
+    maximumFractionDigits: 2,
+  })}%`;
+}
+
+function formatChartAxisValue(value: number, mode: ChartScaleMode) {
+  if (mode === "change") {
+    return `${value > 0 ? "+" : ""}${value.toLocaleString("en-US", {
+      maximumFractionDigits: 1,
+    })}%`;
+  }
+
+  return value.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: Math.abs(value) >= 10 ? 2 : 4,
+  });
 }
 
 function returnTone(value: number | null) {
@@ -119,50 +196,171 @@ function BackIcon() {
 }
 
 function PriceChart({ points }: { points: PricePoint[] }) {
+  const [rangeKey, setRangeKey] = useState<ChartRangeKey>("90d");
+  const [scaleMode, setScaleMode] = useState<ChartScaleMode>("price");
+  const [customRange, setCustomRange] = useState({ from: "", to: "" });
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+
   const chart = useMemo(() => {
-    const validPoints = points.filter(
-      (point) => Number.isFinite(Date.parse(point.timestamp)) && point.price_usd > 0
-    );
+    const validPoints = points
+      .map((point) => ({
+        ...point,
+        time: Date.parse(point.timestamp),
+      }))
+      .filter((point) => Number.isFinite(point.time) && point.price_usd > 0)
+      .sort((a, b) => a.time - b.time);
 
     if (validPoints.length < 2) {
       return null;
     }
 
     const width = 960;
-    const height = 320;
-    const padding = 28;
-    const times = validPoints.map((point) => Date.parse(point.timestamp));
-    const prices = validPoints.map((point) => point.price_usd);
-    const minTime = Math.min(...times);
-    const maxTime = Math.max(...times);
-    const minPrice = Math.min(...prices);
-    const maxPrice = Math.max(...prices);
-    const priceRange = maxPrice - minPrice || 1;
-    const timeRange = maxTime - minTime || 1;
-    const innerWidth = width - padding * 2;
-    const innerHeight = height - padding * 2;
+    const height = 420;
+    const overviewHeight = 72;
+    const padding = {
+      top: 24,
+      right: 28,
+      bottom: 52,
+      left: 74,
+    };
+    const allTimes = validPoints.map((point) => point.time);
+    const availableStart = Math.min(...allTimes);
+    const availableEnd = Math.max(...allTimes);
+    const selectedRange = CHART_RANGES.find((range) => range.key === rangeKey);
+    const presetStart =
+      selectedRange?.days === null || !selectedRange
+        ? availableStart
+        : Math.max(availableStart, availableEnd - selectedRange.days * DAY_MS);
+    const customStart = customRange.from
+      ? dateInputStart(customRange.from) ?? availableStart
+      : availableStart;
+    const customEnd = customRange.to
+      ? dateInputEnd(customRange.to) ?? availableEnd
+      : availableEnd;
+    const rawStart = rangeKey === "custom" ? customStart : presetStart;
+    const rawEnd = rangeKey === "custom" ? customEnd : availableEnd;
+    const selectedStart = Math.max(availableStart, Math.min(rawStart, rawEnd));
+    const selectedEnd = Math.min(availableEnd, Math.max(rawStart, rawEnd));
+    const visiblePoints = validPoints.filter(
+      (point) => point.time >= selectedStart && point.time <= selectedEnd
+    );
+    const selectedPoints =
+      visiblePoints.length >= 2
+        ? visiblePoints
+        : validPoints.slice(Math.max(0, validPoints.length - 2));
+    const selectedStartTime = selectedPoints[0].time;
+    const selectedEndTime = selectedPoints[selectedPoints.length - 1].time;
+    const startPrice = selectedPoints[0].price_usd;
+    const endPrice = selectedPoints[selectedPoints.length - 1].price_usd;
+    const displayValues = selectedPoints.map((point) =>
+      scaleMode === "change"
+        ? percentChange(startPrice, point.price_usd) ?? 0
+        : point.price_usd
+    );
+    const minValue = Math.min(...displayValues);
+    const maxValue = Math.max(...displayValues);
+    const valueRange = maxValue - minValue || Math.max(Math.abs(maxValue), 1) * 0.02;
+    const valuePadding = valueRange * 0.08;
+    const yMin =
+      scaleMode === "price" ? Math.max(0, minValue - valuePadding) : minValue - valuePadding;
+    const yMax = maxValue + valuePadding;
+    const yRange = yMax - yMin || 1;
+    const timeRange = selectedEndTime - selectedStartTime || 1;
+    const innerWidth = width - padding.left - padding.right;
+    const innerHeight = height - padding.top - padding.bottom;
 
-    const polyline = validPoints
+    const mappedPoints = selectedPoints.map((point, index) => {
+      const displayValue = displayValues[index];
+      const x =
+        padding.left +
+        ((point.time - selectedStartTime) / timeRange) * innerWidth;
+      const y =
+        padding.top + (1 - (displayValue - yMin) / yRange) * innerHeight;
+
+      return {
+        ...point,
+        displayValue,
+        x,
+        y,
+        changeFromStart: percentChange(startPrice, point.price_usd),
+      };
+    });
+
+    const path = mappedPoints
+      .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
+      .join(" ");
+    const areaPath = `${path} L ${mappedPoints.at(-1)?.x.toFixed(2)} ${
+      height - padding.bottom
+    } L ${mappedPoints[0].x.toFixed(2)} ${height - padding.bottom} Z`;
+    const yTicks = Array.from({ length: 5 }, (_, index) => {
+      const ratio = index / 4;
+      const value = yMax - ratio * yRange;
+      const y = padding.top + ratio * innerHeight;
+      return { value, y };
+    });
+    const tickCount = Math.min(6, selectedPoints.length);
+    const xTicks = Array.from({ length: tickCount }, (_, index) => {
+      const ratio = tickCount === 1 ? 0 : index / (tickCount - 1);
+      const time = selectedStartTime + ratio * timeRange;
+      const x = padding.left + ratio * innerWidth;
+      return { time, x };
+    });
+    const allMinPrice = Math.min(...validPoints.map((point) => point.price_usd));
+    const allMaxPrice = Math.max(...validPoints.map((point) => point.price_usd));
+    const overviewRange = allMaxPrice - allMinPrice || 1;
+    const overviewTop = 18;
+    const overviewBottom = overviewHeight - 18;
+    const overviewInnerHeight = overviewBottom - overviewTop;
+    const overviewTimeRange = availableEnd - availableStart || 1;
+    const overviewPolyline = validPoints
       .map((point) => {
         const x =
-          padding + ((Date.parse(point.timestamp) - minTime) / timeRange) * innerWidth;
+          padding.left +
+          ((point.time - availableStart) / overviewTimeRange) * innerWidth;
         const y =
-          padding + (1 - (point.price_usd - minPrice) / priceRange) * innerHeight;
+          overviewTop +
+          (1 - (point.price_usd - allMinPrice) / overviewRange) * overviewInnerHeight;
         return `${x.toFixed(2)},${y.toFixed(2)}`;
       })
       .join(" ");
+    const overviewSelectionX =
+      padding.left +
+      ((selectedStartTime - availableStart) / overviewTimeRange) * innerWidth;
+    const overviewSelectionWidth = Math.max(
+      2,
+      ((selectedEndTime - selectedStartTime) / overviewTimeRange) * innerWidth
+    );
 
     return {
       width,
       height,
+      overviewHeight,
       padding,
-      polyline,
-      minPrice,
-      maxPrice,
-      start: validPoints[0],
-      end: validPoints.at(-1) as PricePoint,
+      path,
+      areaPath,
+      yTicks,
+      xTicks,
+      mappedPoints,
+      overviewPolyline,
+      overviewSelectionX,
+      overviewSelectionWidth,
+      selectedStartTime,
+      selectedEndTime,
+      availableStart,
+      availableEnd,
+      rangeStartInput: dateInputValue(selectedStartTime),
+      rangeEndInput: dateInputValue(selectedEndTime),
+      availableStartInput: dateInputValue(availableStart),
+      availableEndInput: dateInputValue(availableEnd),
+      startPrice,
+      endPrice,
+      minPrice: Math.min(...selectedPoints.map((point) => point.price_usd)),
+      maxPrice: Math.max(...selectedPoints.map((point) => point.price_usd)),
+      totalChange: percentChange(startPrice, endPrice),
+      pointCount: selectedPoints.length,
+      dayCount: Math.max(1, Math.round((selectedEndTime - selectedStartTime) / DAY_MS)),
     };
-  }, [points]);
+  }, [customRange, points, rangeKey, scaleMode]);
 
   if (!chart) {
     return (
@@ -172,43 +370,313 @@ function PriceChart({ points }: { points: PricePoint[] }) {
     );
   }
 
+  const selectedPoint =
+    chart.mappedPoints[
+      activeIndex === null
+        ? chart.mappedPoints.length - 1
+        : Math.min(activeIndex, chart.mappedPoints.length - 1)
+    ];
+
+  function selectRange(key: Exclude<ChartRangeKey, "custom">) {
+    setRangeKey(key);
+    setCustomRange({ from: "", to: "" });
+    setActiveIndex(null);
+  }
+
+  function setCustomDate(field: "from" | "to", value: string) {
+    setRangeKey("custom");
+    setActiveIndex(null);
+    const rangeStartInput = chart!.rangeStartInput;
+    const rangeEndInput = chart!.rangeEndInput;
+
+    setCustomRange((current) => ({
+      from:
+        field === "from"
+          ? value
+          : current.from || rangeStartInput,
+      to:
+        field === "to"
+          ? value
+          : current.to || rangeEndInput,
+    }));
+  }
+
+  function moveActivePoint(delta: number) {
+    setActiveIndex((current) => {
+      const base = current ?? chart!.mappedPoints.length - 1;
+      return Math.max(0, Math.min(chart!.mappedPoints.length - 1, base + delta));
+    });
+  }
+
+  function handlePointerMove(event: PointerEvent<SVGSVGElement>) {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const x = ((event.clientX - bounds.left) / bounds.width) * chart!.width;
+    let nearestIndex = 0;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    chart!.mappedPoints.forEach((point, index) => {
+      const distance = Math.abs(point.x - x);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = index;
+      }
+    });
+
+    setActiveIndex(nearestIndex);
+  }
+
+  function handleChartKeyDown(event: KeyboardEvent<SVGSVGElement>) {
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      moveActivePoint(-1);
+    }
+
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      moveActivePoint(1);
+    }
+
+    if (event.key === "Home") {
+      event.preventDefault();
+      setActiveIndex(0);
+    }
+
+    if (event.key === "End") {
+      event.preventDefault();
+      setActiveIndex(chart!.mappedPoints.length - 1);
+    }
+  }
+
   return (
-    <div className="rounded-lg border border-white/10 bg-zinc-950 p-4">
-      <div className="mb-3 flex items-center justify-between text-xs text-zinc-500">
-        <span>{formatDate(chart.start.timestamp)}</span>
-        <span>
-          {formatPrice(chart.minPrice)} - {formatPrice(chart.maxPrice)}
-        </span>
-        <span>{formatDate(chart.end.timestamp)}</span>
+    <div className="rounded-lg border border-white/10 bg-zinc-950 p-4 md:p-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
+            Price history
+          </p>
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            <span className="text-2xl font-semibold text-white">
+              {formatPrice(selectedPoint.price_usd)}
+            </span>
+            <span className={`font-mono text-sm ${returnTone(selectedPoint.changeFromStart)}`}>
+              {formatSignedPercent(selectedPoint.changeFromStart)}
+            </span>
+            <span className="text-sm text-zinc-400">
+              {formatDateWithYear(selectedPoint.timestamp)}
+            </span>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
+            <span>
+              {formatDateWithYear(chart.selectedStartTime)} -{" "}
+              {formatDateWithYear(chart.selectedEndTime)}
+            </span>
+            <span>{chart.pointCount} points</span>
+            <span>{chart.dayCount} days</span>
+            <span>
+              Range {formatPrice(chart.minPrice)} - {formatPrice(chart.maxPrice)}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3 lg:items-end">
+          <div className="flex flex-wrap gap-2">
+            {CHART_RANGES.map((range) => (
+              <button
+                key={range.key}
+                type="button"
+                onClick={() => selectRange(range.key)}
+                className={`min-h-9 rounded-md border px-3 text-xs font-semibold transition-colors ${
+                  rangeKey === range.key
+                    ? "border-emerald-400 bg-emerald-400 text-black"
+                    : "border-zinc-800 bg-black text-zinc-300 hover:bg-zinc-900"
+                }`}
+              >
+                {range.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+            <label className="sr-only" htmlFor="gmtrade-chart-from">
+              Chart from date
+            </label>
+            <input
+              id="gmtrade-chart-from"
+              type="date"
+              min={chart.availableStartInput}
+              max={chart.availableEndInput}
+              value={rangeKey === "custom" ? customRange.from : chart.rangeStartInput}
+              onChange={(event) => setCustomDate("from", event.target.value)}
+              onInput={(event) => setCustomDate("from", event.currentTarget.value)}
+              className="min-h-9 rounded-md border border-zinc-800 bg-black px-3 text-xs text-zinc-200 outline-none transition-colors focus:border-emerald-400"
+            />
+            <label className="sr-only" htmlFor="gmtrade-chart-to">
+              Chart to date
+            </label>
+            <input
+              id="gmtrade-chart-to"
+              type="date"
+              min={chart.availableStartInput}
+              max={chart.availableEndInput}
+              value={rangeKey === "custom" ? customRange.to : chart.rangeEndInput}
+              onChange={(event) => setCustomDate("to", event.target.value)}
+              onInput={(event) => setCustomDate("to", event.currentTarget.value)}
+              className="min-h-9 rounded-md border border-zinc-800 bg-black px-3 text-xs text-zinc-200 outline-none transition-colors focus:border-emerald-400"
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {CHART_SCALE_MODES.map((mode) => (
+              <button
+                key={mode.key}
+                type="button"
+                onClick={() => setScaleMode(mode.key)}
+                className={`min-h-9 rounded-md border px-3 text-xs font-semibold transition-colors ${
+                  scaleMode === mode.key
+                    ? "border-cyan-300 bg-cyan-300 text-black"
+                    : "border-zinc-800 bg-black text-zinc-300 hover:bg-zinc-900"
+                }`}
+              >
+                {mode.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => moveActivePoint(-1)}
+              className="min-h-9 rounded-md border border-zinc-800 bg-black px-3 text-xs font-semibold text-zinc-300 transition-colors hover:bg-zinc-900"
+            >
+              Prev
+            </button>
+            <button
+              type="button"
+              onClick={() => moveActivePoint(1)}
+              className="min-h-9 rounded-md border border-zinc-800 bg-black px-3 text-xs font-semibold text-zinc-300 transition-colors hover:bg-zinc-900"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </div>
+
       <svg
-        className="h-[320px] w-full"
+        className="mt-5 h-[420px] w-full touch-none rounded-md outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70"
         viewBox={`0 0 ${chart.width} ${chart.height}`}
         role="img"
         aria-label="Pool price history chart"
         preserveAspectRatio="none"
+        tabIndex={0}
+        onPointerMove={handlePointerMove}
+        onKeyDown={handleChartKeyDown}
       >
-        {[0, 1, 2, 3].map((index) => {
-          const y = chart.padding + index * ((chart.height - chart.padding * 2) / 3);
-          return (
+        <defs>
+          <linearGradient id="gmtrade-chart-fill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#34d399" stopOpacity="0.24" />
+            <stop offset="100%" stopColor="#34d399" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        {chart.yTicks.map((tick) => (
+          <g key={tick.y}>
             <line
-              key={index}
-              x1={chart.padding}
-              x2={chart.width - chart.padding}
-              y1={y}
-              y2={y}
+              x1={chart.padding.left}
+              x2={chart.width - chart.padding.right}
+              y1={tick.y}
+              y2={tick.y}
               stroke="rgba(255,255,255,0.08)"
               strokeWidth="1"
             />
-          );
-        })}
-        <polyline
-          fill="none"
-          points={chart.polyline}
+            <text
+              x={chart.padding.left - 12}
+              y={tick.y + 4}
+              textAnchor="end"
+              className="fill-zinc-500 text-[11px]"
+              vectorEffect="non-scaling-stroke"
+            >
+              {formatChartAxisValue(tick.value, scaleMode)}
+            </text>
+          </g>
+        ))}
+        {chart.xTicks.map((tick) => (
+          <g key={tick.x}>
+            <line
+              x1={tick.x}
+              x2={tick.x}
+              y1={chart.padding.top}
+              y2={chart.height - chart.padding.bottom}
+              stroke="rgba(255,255,255,0.045)"
+              strokeWidth="1"
+            />
+            <text
+              x={tick.x}
+              y={chart.height - 18}
+              textAnchor="middle"
+              className="fill-zinc-500 text-[12px]"
+              vectorEffect="non-scaling-stroke"
+            >
+              {formatDate(tick.time)}
+            </text>
+          </g>
+        ))}
+        <path d={chart.areaPath} fill="url(#gmtrade-chart-fill)" />
+        <path
+          d={chart.path}
           stroke="#34d399"
           strokeLinecap="round"
           strokeLinejoin="round"
-          strokeWidth="3"
+          strokeWidth="3.2"
+          vectorEffect="non-scaling-stroke"
+        />
+        <line
+          x1={selectedPoint.x}
+          x2={selectedPoint.x}
+          y1={chart.padding.top}
+          y2={chart.height - chart.padding.bottom}
+          stroke="rgba(52,211,153,0.35)"
+          strokeDasharray="4 5"
+          strokeWidth="1"
+          vectorEffect="non-scaling-stroke"
+        />
+        <circle
+          cx={selectedPoint.x}
+          cy={selectedPoint.y}
+          r="5"
+          fill="#020617"
+          stroke="#6ee7b7"
+          strokeWidth="2.4"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+
+      <svg
+        className="mt-3 h-[72px] w-full"
+        viewBox={`0 0 ${chart.width} ${chart.overviewHeight}`}
+        role="img"
+        aria-label="Pool full history overview"
+        preserveAspectRatio="none"
+      >
+        <rect
+          x={chart.padding.left}
+          y="0"
+          width={chart.width - chart.padding.left - chart.padding.right}
+          height={chart.overviewHeight}
+          rx="8"
+          fill="rgba(255,255,255,0.025)"
+        />
+        <polyline
+          fill="none"
+          points={chart.overviewPolyline}
+          stroke="rgba(161,161,170,0.5)"
+          strokeWidth="2"
+          vectorEffect="non-scaling-stroke"
+        />
+        <rect
+          x={chart.overviewSelectionX}
+          y="7"
+          width={chart.overviewSelectionWidth}
+          height={chart.overviewHeight - 14}
+          rx="6"
+          fill="rgba(52,211,153,0.12)"
+          stroke="rgba(52,211,153,0.65)"
+          strokeWidth="1.5"
           vectorEffect="non-scaling-stroke"
         />
       </svg>
