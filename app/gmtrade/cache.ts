@@ -8,7 +8,7 @@ export type CacheInfo = {
   stale: boolean;
 };
 
-export const GMTRADE_CACHE_REFRESH_MS = 5 * 60 * 1000;
+export const GMTRADE_CACHE_REFRESH_MS = 60 * 60 * 1000;
 export const GMTRADE_POOLS_CACHE_KEY = "gmtrade:pools-cache:v1";
 
 export function gmTradePositionsCacheKey(wallet: string) {
@@ -62,4 +62,15 @@ export function cacheInfo(
     cachedAt: record.cachedAt,
     stale,
   };
+}
+
+export function isCachedRecordFresh(
+  record: CachedRecord<unknown>,
+  maxAgeMs = GMTRADE_CACHE_REFRESH_MS
+) {
+  const cachedAt = Date.parse(record.cachedAt);
+
+  if (!Number.isFinite(cachedAt)) return false;
+
+  return Date.now() - cachedAt < maxAgeMs;
 }

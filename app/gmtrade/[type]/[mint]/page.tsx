@@ -17,6 +17,7 @@ import {
   cacheInfo,
   gmTradePoolDetailCacheKey,
   gmTradePositionsCacheKey,
+  isCachedRecordFresh,
   readCachedRecord,
   writeCachedRecord,
 } from "@/app/gmtrade/cache";
@@ -971,6 +972,14 @@ export default function GMTradePoolDetailPage() {
     if (cached) {
       setData(cached.payload);
       setPoolCacheInfo(cacheInfo(cached, true));
+      setLoading(false);
+
+      if (isCachedRecordFresh(cached)) {
+        setError("");
+        setCacheNotice("");
+        return;
+      }
+
       setCacheNotice(
         `Showing cached chart from ${formatTimestamp(cached.cachedAt)} while refreshing.`
       );
@@ -1029,8 +1038,36 @@ export default function GMTradePoolDetailPage() {
   }, [mint, type]);
 
   useEffect(() => {
+    if ((type !== "GM" && type !== "GLV") || !mint) {
+      setPosition(null);
+      return;
+    }
+
+    const walletFromUrl =
+      new URLSearchParams(window.location.search).get("wallet")?.trim() ?? "";
+    const wallet = walletFromUrl || storedPositionWallet();
+
+    if (!wallet) {
+      setPosition(null);
+      return;
+    }
+
+    const cached = readCachedRecord<PositionsResponse>(
+      gmTradePositionsCacheKey(wallet)
+    );
+
+    if (cached) {
+      const currentPosition = cached.payload.rows.find(
+        (row) => row.type === type && row.mint === mint
+      );
+
+      setPosition(currentPosition ?? null);
+
+      if (isCachedRecordFresh(cached)) return;
+    }
+
     void loadPosition();
-  }, [loadPosition]);
+  }, [loadPosition, mint, type]);
 
   const refreshData = useCallback(() => {
     void loadPool();

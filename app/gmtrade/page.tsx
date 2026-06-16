@@ -9,6 +9,7 @@ import {
   GMTRADE_POOLS_CACHE_KEY,
   cacheInfo,
   gmTradePositionsCacheKey,
+  isCachedRecordFresh,
   readCachedRecord,
   writeCachedRecord,
 } from "@/app/gmtrade/cache";
@@ -558,6 +559,14 @@ export default function GMTradePage() {
     if (cached) {
       setData(cached.payload);
       setPoolsCacheInfo(cacheInfo(cached, true));
+      setLoading(false);
+
+      if (isCachedRecordFresh(cached)) {
+        setError("");
+        setCacheNotice("");
+        return;
+      }
+
       setCacheNotice(
         `Showing cached pools from ${formatTimestamp(cached.cachedAt)} while refreshing.`
       );
@@ -590,6 +599,13 @@ export default function GMTradePage() {
       setPositions(cached.payload);
       setPositionWallet(wallet);
       setPositionsCacheInfo(cacheInfo(cached, true));
+      setWalletInput(wallet);
+
+      if (isCachedRecordFresh(cached)) {
+        setPositionError("");
+        return;
+      }
+
       setPositionError(
         `Showing cached positions from ${formatTimestamp(cached.cachedAt)} while refreshing.`
       );
