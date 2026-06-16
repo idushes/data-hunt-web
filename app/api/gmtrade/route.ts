@@ -7,13 +7,13 @@ const GRAPHQL_ENDPOINT =
 const SOLANA_RPC_ENDPOINT = "https://api.mainnet-beta.solana.com";
 const RETRYABLE_STATUS_CODES = new Set([502, 503, 504]);
 const SOLANA_ADDRESS_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
-const PERFORMANCE_PERIODS = [1, 7, 30, 90] as const;
-const HISTORY_LIMIT = 370;
+const PERFORMANCE_PERIODS = [1, 7, 30, 90, 365] as const;
+const HISTORY_LIMIT = 380;
 
 type GraphQLData = Record<string, unknown>;
 type PoolType = "GM" | "GLV";
 type PeriodDays = (typeof PERFORMANCE_PERIODS)[number];
-type PeriodKey = "1d" | "7d" | "30d" | "90d";
+type PeriodKey = "1d" | "7d" | "30d" | "90d" | "1y";
 
 type GmUser = {
   marketToken: string;
@@ -195,6 +195,7 @@ function combineApy(apy: number | null, pnlApy: number | null) {
 }
 
 function periodKey(days: PeriodDays): PeriodKey {
+  if (days === 365) return "1y";
   return `${days}d` as PeriodKey;
 }
 
@@ -209,7 +210,7 @@ function percentChange(current: number, previous: number | null | undefined) {
 }
 
 function emptyPeriodReturns(): PeriodReturns {
-  return { "1d": null, "7d": null, "30d": null, "90d": null };
+  return { "1d": null, "7d": null, "30d": null, "90d": null, "1y": null };
 }
 
 function latestTimestamp(...values: string[]) {
@@ -724,12 +725,14 @@ function buildPoolsSummary(rows: PoolPerformanceRow[]) {
       "7d": weightedReturn(rows, "7d"),
       "30d": weightedReturn(rows, "30d"),
       "90d": weightedReturn(rows, "90d"),
+      "1y": weightedReturn(rows, "1y"),
     },
     best_returns: {
       "1d": bestReturn(rows, "1d"),
       "7d": bestReturn(rows, "7d"),
       "30d": bestReturn(rows, "30d"),
       "90d": bestReturn(rows, "90d"),
+      "1y": bestReturn(rows, "1y"),
     },
     updated_at:
       rows

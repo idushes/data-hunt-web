@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Header from "@/components/landing/Header";
 
 type PoolType = "GM" | "GLV";
-type PeriodKey = "1d" | "7d" | "30d" | "90d";
+type PeriodKey = "1d" | "7d" | "30d" | "90d" | "1y";
 
 type PricePoint = {
   timestamp: string;
@@ -33,7 +33,7 @@ type ApiError = {
   error: string;
 };
 
-const PERIODS: PeriodKey[] = ["1d", "7d", "30d", "90d"];
+const PERIODS: PeriodKey[] = ["1d", "7d", "30d", "90d", "1y"];
 
 function shortAddress(value: string) {
   if (!value) return "";
@@ -359,7 +359,7 @@ export default function GMTradePoolDetailPage() {
               </div>
             </section>
 
-            <section className="mt-4 grid gap-3 sm:grid-cols-4">
+            <section className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               {PERIODS.map((period) => (
                 <div
                   key={period}

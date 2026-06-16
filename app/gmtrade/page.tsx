@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Header from "@/components/landing/Header";
 
 type PoolType = "GM" | "GLV";
-type PeriodKey = "1d" | "7d" | "30d" | "90d";
+type PeriodKey = "1d" | "7d" | "30d" | "90d" | "1y";
 type PoolTypeFilter = "ALL" | PoolType;
 
 type PeriodReturns = Record<PeriodKey, number | null>;
@@ -43,7 +43,7 @@ type ApiError = {
   error: string;
 };
 
-const PERIODS: PeriodKey[] = ["1d", "7d", "30d", "90d"];
+const PERIODS: PeriodKey[] = ["1d", "7d", "30d", "90d", "1y"];
 const FAVORITES_STORAGE_KEY = "gmtrade:favorites:v1";
 
 function shortAddress(value: string) {
@@ -437,8 +437,8 @@ export default function GMTradePage() {
                     <th className="px-4 py-3 font-medium">7D</th>
                     <th className="px-4 py-3 font-medium">30D</th>
                     <th className="px-4 py-3 font-medium">90D</th>
+                    <th className="px-4 py-3 font-medium">1Y</th>
                     <th className="px-4 py-3 font-medium">Supply</th>
-                    <th className="px-4 py-3 font-medium">Updated</th>
                     <th className="px-4 py-3 font-medium">Chart</th>
                   </tr>
                 </thead>
@@ -506,9 +506,6 @@ export default function GMTradePage() {
                       ))}
                       <td className="px-4 py-4 font-mono text-zinc-300">
                         {formatNumber(row.supply)}
-                      </td>
-                      <td className="px-4 py-4 text-zinc-400">
-                        {formatTimestamp(row.updated_at)}
                       </td>
                       <td className="px-4 py-4">
                         <Link
