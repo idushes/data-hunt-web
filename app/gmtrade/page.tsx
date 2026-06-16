@@ -7,7 +7,14 @@ import Header from "@/components/landing/Header";
 type PoolType = "GM" | "GLV";
 type PeriodKey = "1d" | "7d" | "30d" | "90d" | "1y";
 type PoolTypeFilter = "ALL" | PoolType;
-type SortKey = "favorite" | "pool" | "price" | "liquidity" | "supply" | PeriodKey;
+type SortKey =
+  | "favorite"
+  | "pool"
+  | "position_value"
+  | "position_apy"
+  | "liquidity"
+  | "supply"
+  | PeriodKey;
 type SortDirection = "asc" | "desc";
 type SortState = {
   key: SortKey;
@@ -33,6 +40,21 @@ type PoolRow = {
   updated_at: string;
 };
 
+type PositionRow = {
+  type: PoolType;
+  mint: string;
+  name: string;
+  balance: number;
+  price_usd: number;
+  value_usd: number;
+  apy_percent: number | null;
+  pnl_apy_percent: number | null;
+  total_apy_percent: number | null;
+  estimated_daily_usd: number | null;
+  estimated_yearly_usd: number | null;
+  updated_at: string;
+};
+
 type PoolsResponse = {
   mode: "pools";
   periods: PeriodKey[];
@@ -48,6 +70,20 @@ type PoolsResponse = {
   };
 };
 
+type PositionsResponse = {
+  wallet: string;
+  rows: PositionRow[];
+  summary: {
+    total_value_usd: number;
+    value_with_apy_usd: number;
+    weighted_apy_percent: number | null;
+    estimated_daily_usd: number;
+    estimated_yearly_usd: number;
+    position_count: number;
+    updated_at: string;
+  };
+};
+
 type ApiError = {
   error: string;
 };
@@ -55,6 +91,7 @@ type ApiError = {
 const PERIODS: PeriodKey[] = ["1d", "7d", "30d", "90d", "1y"];
 const FAVORITES_STORAGE_KEY = "gmtrade:favorites:v1";
 const SUPPLY_FILTER_STORAGE_KEY = "gmtrade:supply-filter:v1";
+const POSITION_WALLET_STORAGE_KEY = "gmtrade:position-wallet:v1";
 const GMTRADE_APP_URL = "https://gmtrade.xyz";
 const EMPTY_SUPPLY_FILTER: SupplyFilter = {
   min: "",
@@ -85,11 +122,9 @@ function formatSupplyUsd(value: number) {
   });
 }
 
-function formatPrice(value: number) {
+function formatTokenAmount(value: number) {
   if (!Number.isFinite(value)) return "-";
   return value.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
     maximumFractionDigits: value >= 1 ? 4 : 8,
   });
 }
@@ -149,10 +184,18 @@ function isPeriodSortKey(key: SortKey): key is PeriodKey {
   return PERIODS.includes(key as PeriodKey);
 }
 
-function sortValue(row: PoolRow, key: SortKey, favorites: Set<string>) {
+function sortValue(
+  row: PoolRow,
+  key: SortKey,
+  favorites: Set<string>,
+  positions: Map<string, PositionRow>
+) {
+  const position = positions.get(favoriteKeyForRow(row));
+
   if (key === "favorite") return favorites.has(favoriteKeyForRow(row)) ? 1 : 0;
   if (key === "pool") return row.name.toLowerCase();
-  if (key === "price") return row.price_usd;
+  if (key === "position_value") return position?.value_usd ?? null;
+  if (key === "position_apy") return position?.total_apy_percent ?? null;
   if (key === "liquidity") return row.liquidity_usd;
   if (key === "supply") return row.supply;
   if (isPeriodSortKey(key)) return row.period_returns[key];
@@ -236,6 +279,26 @@ function persistSupplyFilter(filter: SupplyFilter) {
   }
 }
 
+function storedPositionWallet() {
+  try {
+    return localStorage.getItem(POSITION_WALLET_STORAGE_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function persistPositionWallet(wallet: string) {
+  try {
+    if (wallet) {
+      localStorage.setItem(POSITION_WALLET_STORAGE_KEY, wallet);
+    } else {
+      localStorage.removeItem(POSITION_WALLET_STORAGE_KEY);
+    }
+  } catch {
+    // localStorage can be unavailable in private or restricted browser contexts.
+  }
+}
+
 function StarIcon({ filled = false }: { filled?: boolean }) {
   return (
     <svg
@@ -304,9 +367,14 @@ function SortIcon({
 
 export default function GMTradePage() {
   const [data, setData] = useState<PoolsResponse | null>(null);
+  const [positions, setPositions] = useState<PositionsResponse | null>(null);
   const [error, setError] = useState("");
+  const [positionError, setPositionError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [positionLoading, setPositionLoading] = useState(false);
   const [query, setQuery] = useState("");
+  const [walletInput, setWalletInput] = useState("");
+  const [positionWallet, setPositionWallet] = useState("");
   const [typeFilter, setTypeFilter] = useState<PoolTypeFilter>("ALL");
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [favoritesOnly, setFavoritesOnly] = useState(false);
@@ -344,6 +412,62 @@ export default function GMTradePage() {
     }
   }, []);
 
+  const loadPositions = useCallback(async (wallet: string) => {
+    const normalizedWallet = wallet.trim();
+
+    if (!normalizedWallet) {
+      setPositions(null);
+      setPositionWallet("");
+      setPositionError("");
+      persistPositionWallet("");
+      return;
+    }
+
+    setPositionLoading(true);
+    setPositionError("");
+
+    try {
+      const response = await fetch(
+        `/api/gmtrade?wallet=${encodeURIComponent(normalizedWallet)}`,
+        { cache: "no-store" }
+      );
+      const payload = (await response.json()) as PositionsResponse | ApiError;
+
+      if (!response.ok) {
+        const message =
+          "error" in payload && payload.error
+            ? payload.error
+            : "Failed to load wallet positions.";
+        throw new Error(message);
+      }
+
+      setPositions(payload as PositionsResponse);
+      setPositionWallet(normalizedWallet);
+      setWalletInput(normalizedWallet);
+      setSortState((current) =>
+        current ?? { key: "position_value", direction: "desc" }
+      );
+      persistPositionWallet(normalizedWallet);
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error
+          ? requestError.message
+          : "Failed to load wallet positions.";
+      setPositionError(message);
+      setPositions(null);
+      setPositionWallet("");
+    } finally {
+      setPositionLoading(false);
+    }
+  }, []);
+
+  const refreshData = useCallback(() => {
+    void loadPools();
+    if (positionWallet) {
+      void loadPositions(positionWallet);
+    }
+  }, [loadPools, loadPositions, positionWallet]);
+
   useEffect(() => {
     void loadPools();
   }, [loadPools]);
@@ -356,6 +480,17 @@ export default function GMTradePage() {
     setSupplyFilter(storedSupplyFilter());
     setSupplyFilterLoaded(true);
   }, []);
+
+  useEffect(() => {
+    const walletFromUrl =
+      new URLSearchParams(window.location.search).get("wallet")?.trim() ?? "";
+    const wallet = walletFromUrl || storedPositionWallet();
+
+    if (!wallet) return;
+
+    setWalletInput(wallet);
+    void loadPositions(wallet);
+  }, [loadPositions]);
 
   useEffect(() => {
     if (!supplyFilterLoaded) return;
@@ -391,6 +526,16 @@ export default function GMTradePage() {
     return data.rows.filter((row) => favorites.has(favoriteKeyForRow(row))).length;
   }, [data, favorites]);
 
+  const positionMap = useMemo(() => {
+    const map = new Map<string, PositionRow>();
+
+    for (const position of positions?.rows ?? []) {
+      map.set(favoriteKey(position.type, position.mint), position);
+    }
+
+    return map;
+  }, [positions]);
+
   const filteredRows = useMemo(() => {
     if (!data) return [];
 
@@ -423,15 +568,15 @@ export default function GMTradePage() {
       .map((row, index) => ({ row, index }))
       .sort((left, right) => {
         const comparison = compareSortValues(
-          sortValue(left.row, sortState.key, favorites),
-          sortValue(right.row, sortState.key, favorites),
+          sortValue(left.row, sortState.key, favorites, positionMap),
+          sortValue(right.row, sortState.key, favorites, positionMap),
           sortState.direction
         );
 
         return comparison || left.index - right.index;
       })
       .map(({ row }) => row);
-  }, [favorites, filteredRows, sortState]);
+  }, [favorites, filteredRows, positionMap, sortState]);
 
   const requestSort = useCallback((key: SortKey) => {
     setSortState((current) => {
@@ -508,6 +653,33 @@ export default function GMTradePage() {
               autoComplete="off"
               spellCheck={false}
             />
+            <form
+              className="flex flex-col gap-2 sm:flex-row lg:w-[430px]"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void loadPositions(walletInput);
+              }}
+            >
+              <label className="sr-only" htmlFor="gmtrade-position-wallet">
+                Solana wallet for positions
+              </label>
+              <input
+                id="gmtrade-position-wallet"
+                value={walletInput}
+                onChange={(event) => setWalletInput(event.target.value)}
+                placeholder="Solana wallet positions"
+                className="min-h-11 flex-1 rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 font-mono text-sm text-white outline-none transition-colors placeholder:font-sans placeholder:text-zinc-600 focus:border-emerald-500"
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <button
+                type="submit"
+                disabled={positionLoading}
+                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {positionLoading ? "Loading" : "Load wallet"}
+              </button>
+            </form>
             <div className="grid grid-cols-3 gap-2 lg:w-[220px]">
               {(["ALL", "GM", "GLV"] as PoolTypeFilter[]).map((value) => (
                 <button
@@ -556,11 +728,11 @@ export default function GMTradePage() {
             </button>
             <button
               type="button"
-              onClick={() => void loadPools()}
-              disabled={loading}
+              onClick={refreshData}
+              disabled={loading || positionLoading}
               className="inline-flex min-h-11 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? "Loading" : "Refresh"}
+              {loading || positionLoading ? "Loading" : "Refresh"}
             </button>
           </div>
         </section>
@@ -577,6 +749,25 @@ export default function GMTradePage() {
                   favorites
                 </>
               )}
+              {positions && (
+                <>
+                  {" "}
+                  · <span className="text-zinc-200">
+                    {positions.summary.position_count}
+                  </span>{" "}
+                  positions ·{" "}
+                  <span className="text-zinc-200">
+                    {formatUsd(positions.summary.total_value_usd)}
+                  </span>{" "}
+                  in {shortAddress(positionWallet)}
+                </>
+              )}
+              {positionLoading && (
+                <>
+                  {" "}
+                  · <span className="text-zinc-200">loading positions</span>
+                </>
+              )}
             </span>
             <span>
               Source updated{" "}
@@ -584,6 +775,12 @@ export default function GMTradePage() {
                 {formatTimestamp(data.summary.updated_at)}
               </span>
             </span>
+          </section>
+        )}
+
+        {positionError && (
+          <section className="mt-4 rounded-lg border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100">
+            Wallet positions: {positionError}
           </section>
         )}
 
@@ -608,7 +805,7 @@ export default function GMTradePage() {
         {!loading && data && filteredRows.length > 0 && (
           <section className="mt-8 overflow-hidden rounded-lg border border-white/10">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1180px] border-collapse text-left text-sm">
+              <table className="w-full min-w-[1280px] border-collapse text-left text-sm">
                 <thead className="bg-zinc-950 text-xs uppercase tracking-[0.12em] text-zinc-500">
                   <tr>
                     {sortableHeader(
@@ -617,7 +814,8 @@ export default function GMTradePage() {
                       "w-12 px-4 py-3 font-medium"
                     )}
                     {sortableHeader("pool", "Pool")}
-                    {sortableHeader("price", "Price")}
+                    {sortableHeader("position_value", "Position")}
+                    {sortableHeader("position_apy", "Yearly APY")}
                     {sortableHeader("liquidity", "Liquidity")}
                     {sortableHeader("1d", "1D")}
                     {sortableHeader("7d", "7D")}
@@ -629,89 +827,132 @@ export default function GMTradePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10 bg-black">
-                  {sortedRows.map((row) => (
-                    <tr key={`${row.type}-${row.mint}`} className="hover:bg-zinc-950">
-                      <td className="px-4 py-4">
-                        <button
-                          type="button"
-                          onClick={() => toggleFavorite(row)}
-                          aria-pressed={favorites.has(favoriteKeyForRow(row))}
-                          aria-label={
-                            favorites.has(favoriteKeyForRow(row))
-                              ? `Remove ${row.name} from favorites`
-                              : `Add ${row.name} to favorites`
-                          }
-                          className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${
-                            favorites.has(favoriteKeyForRow(row))
-                              ? "border-yellow-300/60 bg-yellow-300/15 text-yellow-200"
-                              : "border-zinc-800 bg-zinc-950 text-zinc-500 hover:border-yellow-300/40 hover:text-yellow-200"
-                          }`}
-                          title={
-                            favorites.has(favoriteKeyForRow(row))
-                              ? "Remove from favorites"
-                              : "Add to favorites"
-                          }
-                        >
-                          <StarIcon filled={favorites.has(favoriteKeyForRow(row))} />
-                        </button>
-                      </td>
-                      <td className="px-4 py-4">
-                        <a
-                          href={gmTradePoolUrl(row)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label={`Open ${row.name} on GMTrade`}
-                          className="group/pool flex min-w-0 items-center gap-3 rounded-md outline-none transition-colors hover:text-emerald-200 focus-visible:ring-2 focus-visible:ring-emerald-400/70"
-                          title="Open pool on GMTrade"
-                        >
-                          <span
-                            className={`rounded border px-2 py-1 text-xs font-semibold ${poolTypeTone(
-                              row.type
+                  {sortedRows.map((row) => {
+                    const position = positionMap.get(favoriteKeyForRow(row));
+
+                    return (
+                      <tr
+                        key={`${row.type}-${row.mint}`}
+                        className={`hover:bg-zinc-950 ${
+                          position ? "bg-emerald-950/10" : ""
+                        }`}
+                      >
+                        <td className="px-4 py-4">
+                          <button
+                            type="button"
+                            onClick={() => toggleFavorite(row)}
+                            aria-pressed={favorites.has(favoriteKeyForRow(row))}
+                            aria-label={
+                              favorites.has(favoriteKeyForRow(row))
+                                ? `Remove ${row.name} from favorites`
+                                : `Add ${row.name} to favorites`
+                            }
+                            className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${
+                              favorites.has(favoriteKeyForRow(row))
+                                ? "border-yellow-300/60 bg-yellow-300/15 text-yellow-200"
+                                : "border-zinc-800 bg-zinc-950 text-zinc-500 hover:border-yellow-300/40 hover:text-yellow-200"
+                            }`}
+                            title={
+                              favorites.has(favoriteKeyForRow(row))
+                                ? "Remove from favorites"
+                                : "Add to favorites"
+                            }
+                          >
+                            <StarIcon
+                              filled={favorites.has(favoriteKeyForRow(row))}
+                            />
+                          </button>
+                        </td>
+                        <td className="px-4 py-4">
+                          <a
+                            href={gmTradePoolUrl(row)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`Open ${row.name} on GMTrade`}
+                            className="group/pool flex min-w-0 items-center gap-3 rounded-md outline-none transition-colors hover:text-emerald-200 focus-visible:ring-2 focus-visible:ring-emerald-400/70"
+                            title="Open pool on GMTrade"
+                          >
+                            <span
+                              className={`rounded border px-2 py-1 text-xs font-semibold ${poolTypeTone(
+                                row.type
+                              )}`}
+                            >
+                              {row.type}
+                            </span>
+                            <div className="min-w-0">
+                              <div className="flex max-w-[320px] items-center gap-2">
+                                <p className="truncate font-medium text-white transition-colors group-hover/pool:text-emerald-100">
+                                  {row.name}
+                                </p>
+                                {position && (
+                                  <span className="shrink-0 rounded border border-emerald-300/40 bg-emerald-300/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-200">
+                                    Owned
+                                  </span>
+                                )}
+                              </div>
+                              <p className="font-mono text-xs text-zinc-500 transition-colors group-hover/pool:text-zinc-300">
+                                {shortAddress(row.mint)}
+                              </p>
+                            </div>
+                          </a>
+                        </td>
+                        <td className="px-4 py-4 font-mono">
+                          {position ? (
+                            <div>
+                              <p className="font-semibold text-emerald-200">
+                                {formatUsd(position.value_usd)}
+                              </p>
+                              <p className="mt-1 text-xs text-zinc-500">
+                                {formatTokenAmount(position.balance)} pool tokens
+                              </p>
+                            </div>
+                          ) : (
+                            <span className="text-zinc-700">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 font-mono">
+                          {position ? (
+                            <div>
+                              <p className={returnTone(position.total_apy_percent)}>
+                                {formatPercent(position.total_apy_percent)}
+                              </p>
+                              <p className="mt-1 text-xs text-zinc-500">
+                                {formatUsd(position.estimated_yearly_usd)}/yr
+                              </p>
+                            </div>
+                          ) : (
+                            <span className="text-zinc-700">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 font-mono text-white">
+                          {formatUsd(row.liquidity_usd)}
+                        </td>
+                        {PERIODS.map((period) => (
+                          <td
+                            key={period}
+                            className={`px-4 py-4 font-mono ${returnTone(
+                              row.period_returns[period]
                             )}`}
                           >
-                            {row.type}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="max-w-[320px] truncate font-medium text-white transition-colors group-hover/pool:text-emerald-100">
-                              {row.name}
-                            </p>
-                            <p className="font-mono text-xs text-zinc-500 transition-colors group-hover/pool:text-zinc-300">
-                              {shortAddress(row.mint)}
-                            </p>
-                          </div>
-                        </a>
-                      </td>
-                      <td className="px-4 py-4 font-mono text-zinc-200">
-                        {formatPrice(row.price_usd)}
-                      </td>
-                      <td className="px-4 py-4 font-mono text-white">
-                        {formatUsd(row.liquidity_usd)}
-                      </td>
-                      {PERIODS.map((period) => (
-                        <td
-                          key={period}
-                          className={`px-4 py-4 font-mono ${returnTone(
-                            row.period_returns[period]
-                          )}`}
-                        >
-                          {formatPercent(row.period_returns[period])}
+                            {formatPercent(row.period_returns[period])}
+                          </td>
+                        ))}
+                        <td className="px-4 py-4 font-mono text-zinc-300">
+                          {formatSupplyUsd(row.supply)}
                         </td>
-                      ))}
-                      <td className="px-4 py-4 font-mono text-zinc-300">
-                        {formatSupplyUsd(row.supply)}
-                      </td>
-                      <td className="px-4 py-4">
-                        <Link
-                          href={`/gmtrade/${row.type.toLowerCase()}/${row.mint}`}
-                          aria-label={`Open ${row.name} price chart`}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-400/30 bg-emerald-400/10 text-emerald-200 transition-colors hover:bg-emerald-400/20"
-                          title="Open price chart"
-                        >
-                          <ArrowIcon />
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
+                        <td className="px-4 py-4">
+                          <Link
+                            href={`/gmtrade/${row.type.toLowerCase()}/${row.mint}`}
+                            aria-label={`Open ${row.name} price chart`}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-400/30 bg-emerald-400/10 text-emerald-200 transition-colors hover:bg-emerald-400/20"
+                            title="Open price chart"
+                          >
+                            <ArrowIcon />
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
