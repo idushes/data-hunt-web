@@ -15,7 +15,6 @@ type SortState = {
 };
 type SupplyFilter = {
   min: string;
-  max: string;
 };
 
 type PeriodReturns = Record<PeriodKey, number | null>;
@@ -59,7 +58,6 @@ const SUPPLY_FILTER_STORAGE_KEY = "gmtrade:supply-filter:v1";
 const GMTRADE_APP_URL = "https://gmtrade.xyz";
 const EMPTY_SUPPLY_FILTER: SupplyFilter = {
   min: "",
-  max: "",
 };
 
 function shortAddress(value: string) {
@@ -221,7 +219,6 @@ function storedSupplyFilter(): SupplyFilter {
 
     return {
       min: typeof parsed.min === "string" ? parsed.min : "",
-      max: typeof parsed.max === "string" ? parsed.max : "",
     };
   } catch {
     return EMPTY_SUPPLY_FILTER;
@@ -396,7 +393,6 @@ export default function GMTradePage() {
 
     const normalizedQuery = query.trim().toLowerCase();
     const minSupply = parseSupplyFilterValue(supplyFilter.min);
-    const maxSupply = parseSupplyFilterValue(supplyFilter.max);
 
     return data.rows.filter((row) => {
       const matchesType = typeFilter === "ALL" || row.type === typeFilter;
@@ -407,14 +403,12 @@ export default function GMTradePage() {
         row.name.toLowerCase().includes(normalizedQuery) ||
         row.mint.toLowerCase().includes(normalizedQuery);
       const matchesMinSupply = minSupply === null || row.supply >= minSupply;
-      const matchesMaxSupply = maxSupply === null || row.supply <= maxSupply;
 
       return (
         matchesType &&
         matchesFavorite &&
         matchesQuery &&
-        matchesMinSupply &&
-        matchesMaxSupply
+        matchesMinSupply
       );
     });
   }, [data, favorites, favoritesOnly, query, supplyFilter, typeFilter]);
@@ -558,7 +552,7 @@ export default function GMTradePage() {
                 </button>
               ))}
             </div>
-            <div className="grid grid-cols-2 gap-2 lg:w-[220px]">
+            <div className="lg:w-[150px]">
               <label className="sr-only" htmlFor="gmtrade-supply-min">
                 Minimum supply
               </label>
@@ -570,20 +564,6 @@ export default function GMTradePage() {
                 value={supplyFilter.min}
                 onChange={(event) => updateSupplyFilter("min", event.target.value)}
                 placeholder="Supply min"
-                className="min-h-11 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-3 text-sm text-white outline-none transition-colors placeholder:text-zinc-600 focus:border-emerald-500"
-                autoComplete="off"
-              />
-              <label className="sr-only" htmlFor="gmtrade-supply-max">
-                Maximum supply
-              </label>
-              <input
-                id="gmtrade-supply-max"
-                type="number"
-                min="0"
-                step="any"
-                value={supplyFilter.max}
-                onChange={(event) => updateSupplyFilter("max", event.target.value)}
-                placeholder="Supply max"
                 className="min-h-11 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-3 text-sm text-white outline-none transition-colors placeholder:text-zinc-600 focus:border-emerald-500"
                 autoComplete="off"
               />
