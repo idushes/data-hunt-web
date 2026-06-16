@@ -38,6 +38,22 @@ type PoolDetail = {
   history: PricePoint[];
 };
 
+type PositionRow = {
+  type: PoolType;
+  mint: string;
+  entry_timestamp: string;
+  entry_price_usd: number | null;
+};
+
+type PositionsResponse = {
+  rows: PositionRow[];
+};
+
+type EntryMarker = {
+  timestamp: string;
+  price_usd: number;
+};
+
 type ApiError = {
   error: string;
 };
@@ -56,6 +72,7 @@ const CHART_SCALE_MODES: { key: ChartScaleMode; label: string }[] = [
 ];
 const DAY_MS = 24 * 60 * 60 * 1000;
 const GMTRADE_APP_URL = "https://gmtrade.xyz";
+const POSITION_WALLET_STORAGE_KEY = "gmtrade:position-wallet:v1";
 
 function shortAddress(value: string) {
   if (!value) return "";
@@ -185,6 +202,14 @@ function gmTradePoolUrl(type: string, mint: string) {
   return `${GMTRADE_APP_URL}/pools/poolDetail/${type}/${encodeURIComponent(mint)}`;
 }
 
+function storedPositionWallet() {
+  try {
+    return localStorage.getItem(POSITION_WALLET_STORAGE_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
 function BackIcon() {
   return (
     <svg
@@ -200,7 +225,13 @@ function BackIcon() {
   );
 }
 
-function PriceChart({ points }: { points: PricePoint[] }) {
+function PriceChart({
+  points,
+  entryMarker,
+}: {
+  points: PricePoint[];
+  entryMarker: EntryMarker | null;
+}) {
   const [rangeKey, setRangeKey] = useState<ChartRangeKey>("90d");
   const [scaleMode, setScaleMode] = useState<ChartScaleMode>("price");
   const [customRange, setCustomRange] = useState({ from: "", to: "" });
@@ -262,8 +293,23 @@ function PriceChart({ points }: { points: PricePoint[] }) {
         ? percentChange(startPrice, point.price_usd) ?? 0
         : point.price_usd
     );
-    const minValue = Math.min(...displayValues);
-    const maxValue = Math.max(...displayValues);
+    const entryTime = entryMarker ? Date.parse(entryMarker.timestamp) : Number.NaN;
+    const entryDisplayValue =
+      entryMarker &&
+      entryMarker.price_usd > 0 &&
+      Number.isFinite(entryTime) &&
+      entryTime >= selectedStartTime &&
+      entryTime <= selectedEndTime
+        ? scaleMode === "change"
+          ? percentChange(startPrice, entryMarker.price_usd)
+          : entryMarker.price_usd
+        : null;
+    const domainValues =
+      entryDisplayValue === null || !Number.isFinite(entryDisplayValue)
+        ? displayValues
+        : [...displayValues, entryDisplayValue];
+    const minValue = Math.min(...domainValues);
+    const maxValue = Math.max(...domainValues);
     const valueRange = maxValue - minValue || Math.max(Math.abs(maxValue), 1) * 0.02;
     const valuePadding = valueRange * 0.08;
     const yMin =
@@ -274,13 +320,15 @@ function PriceChart({ points }: { points: PricePoint[] }) {
     const innerWidth = width - padding.left - padding.right;
     const innerHeight = height - padding.top - padding.bottom;
 
+    const xForTime = (time: number) =>
+      padding.left + ((time - selectedStartTime) / timeRange) * innerWidth;
+    const yForValue = (value: number) =>
+      padding.top + (1 - (value - yMin) / yRange) * innerHeight;
+
     const mappedPoints = selectedPoints.map((point, index) => {
       const displayValue = displayValues[index];
-      const x =
-        padding.left +
-        ((point.time - selectedStartTime) / timeRange) * innerWidth;
-      const y =
-        padding.top + (1 - (displayValue - yMin) / yRange) * innerHeight;
+      const x = xForTime(point.time);
+      const y = yForValue(displayValue);
 
       return {
         ...point,
@@ -290,6 +338,31 @@ function PriceChart({ points }: { points: PricePoint[] }) {
         changeFromStart: percentChange(startPrice, point.price_usd),
       };
     });
+    const mappedEntryMarker =
+      entryMarker &&
+      entryDisplayValue !== null &&
+      Number.isFinite(entryDisplayValue)
+        ? (() => {
+            const x = xForTime(entryTime);
+            const y = yForValue(entryDisplayValue);
+            const labelOnLeft = x > padding.left + innerWidth - 130;
+            const labelAnchor: "end" | "start" = labelOnLeft ? "end" : "start";
+
+            return {
+              timestamp: entryMarker.timestamp,
+              price_usd: entryMarker.price_usd,
+              displayValue: entryDisplayValue,
+              x,
+              y,
+              labelX: labelOnLeft ? x - 10 : x + 10,
+              labelY: Math.max(
+                padding.top + 14,
+                Math.min(y - 12, height - padding.bottom - 8)
+              ),
+              labelAnchor,
+            };
+          })()
+        : null;
 
     const path = mappedPoints
       .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
@@ -349,6 +422,7 @@ function PriceChart({ points }: { points: PricePoint[] }) {
       overviewPolyline,
       overviewSelectionX,
       overviewSelectionWidth,
+      entryMarker: mappedEntryMarker,
       selectedStartTime,
       selectedEndTime,
       availableStart,
@@ -365,7 +439,7 @@ function PriceChart({ points }: { points: PricePoint[] }) {
       pointCount: selectedPoints.length,
       dayCount: Math.max(1, Math.round((selectedEndTime - selectedStartTime) / DAY_MS)),
     };
-  }, [customRange, points, rangeKey, scaleMode]);
+  }, [customRange, entryMarker, points, rangeKey, scaleMode]);
 
   if (!chart) {
     return (
@@ -630,6 +704,42 @@ function PriceChart({ points }: { points: PricePoint[] }) {
           strokeWidth="3.2"
           vectorEffect="non-scaling-stroke"
         />
+        {chart.entryMarker && (
+          <g>
+            <title>
+              Entry {formatPrice(chart.entryMarker.price_usd)} on{" "}
+              {formatDateWithYear(chart.entryMarker.timestamp)}
+            </title>
+            <line
+              x1={chart.entryMarker.x}
+              x2={chart.entryMarker.x}
+              y1={chart.padding.top}
+              y2={chart.height - chart.padding.bottom}
+              stroke="rgba(250,204,21,0.6)"
+              strokeDasharray="5 5"
+              strokeWidth="1.5"
+              vectorEffect="non-scaling-stroke"
+            />
+            <circle
+              cx={chart.entryMarker.x}
+              cy={chart.entryMarker.y}
+              r="6"
+              fill="#050505"
+              stroke="#facc15"
+              strokeWidth="2.6"
+              vectorEffect="non-scaling-stroke"
+            />
+            <text
+              x={chart.entryMarker.labelX}
+              y={chart.entryMarker.labelY}
+              textAnchor={chart.entryMarker.labelAnchor}
+              className="fill-yellow-200 text-[11px] font-semibold"
+              vectorEffect="non-scaling-stroke"
+            >
+              Entry
+            </text>
+          </g>
+        )}
         <line
           x1={selectedPoint.x}
           x2={selectedPoint.x}
@@ -694,6 +804,7 @@ export default function GMTradePoolDetailPage() {
   const type = String(params.type ?? "").toUpperCase();
   const mint = String(params.mint ?? "");
   const [data, setData] = useState<PoolDetail | null>(null);
+  const [position, setPosition] = useState<PositionRow | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -738,6 +849,59 @@ export default function GMTradePoolDetailPage() {
   useEffect(() => {
     void loadPool();
   }, [loadPool]);
+
+  const loadPosition = useCallback(async () => {
+    if ((type !== "GM" && type !== "GLV") || !mint) {
+      setPosition(null);
+      return;
+    }
+
+    const walletFromUrl =
+      new URLSearchParams(window.location.search).get("wallet")?.trim() ?? "";
+    const wallet = walletFromUrl || storedPositionWallet();
+
+    if (!wallet) {
+      setPosition(null);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/gmtrade?wallet=${encodeURIComponent(wallet)}`,
+        { cache: "no-store" }
+      );
+      const payload = (await response.json()) as PositionsResponse | ApiError;
+
+      if (!response.ok) {
+        throw new Error(
+          "error" in payload && payload.error
+            ? payload.error
+            : "Failed to load wallet positions."
+        );
+      }
+
+      const currentPosition = (payload as PositionsResponse).rows.find(
+        (row) => row.type === type && row.mint === mint
+      );
+
+      setPosition(currentPosition ?? null);
+    } catch {
+      setPosition(null);
+    }
+  }, [mint, type]);
+
+  useEffect(() => {
+    void loadPosition();
+  }, [loadPosition]);
+
+  const entryMarker = useMemo<EntryMarker | null>(() => {
+    if (!position?.entry_timestamp || position.entry_price_usd === null) return null;
+
+    return {
+      timestamp: position.entry_timestamp,
+      price_usd: position.entry_price_usd,
+    };
+  }, [position]);
 
   return (
     <div className="min-h-screen bg-black text-gray-100">
@@ -867,7 +1031,7 @@ export default function GMTradePoolDetailPage() {
             </section>
 
             <section className="mt-8">
-              <PriceChart points={data.history} />
+              <PriceChart points={data.history} entryMarker={entryMarker} />
             </section>
           </>
         )}

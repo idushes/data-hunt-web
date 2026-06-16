@@ -201,6 +201,12 @@ function gmTradePoolUrl(row: PoolRow) {
   )}`;
 }
 
+function poolChartUrl(row: PoolRow, wallet: string) {
+  const path = `/gmtrade/${row.type.toLowerCase()}/${row.mint}`;
+  const normalizedWallet = wallet.trim();
+  return normalizedWallet ? `${path}?wallet=${encodeURIComponent(normalizedWallet)}` : path;
+}
+
 function defaultSortDirection(key: SortKey): SortDirection {
   return key === "pool" ? "asc" : "desc";
 }
@@ -973,7 +979,7 @@ export default function GMTradePage() {
                         </td>
                         <td className="px-4 py-4">
                           <Link
-                            href={`/gmtrade/${row.type.toLowerCase()}/${row.mint}`}
+                            href={poolChartUrl(row, positionWallet)}
                             aria-label={`Open ${row.name} price chart`}
                             className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-400/30 bg-emerald-400/10 text-emerald-200 transition-colors hover:bg-emerald-400/20"
                             title="Open price chart"
