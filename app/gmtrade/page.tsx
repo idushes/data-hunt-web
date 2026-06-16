@@ -13,6 +13,10 @@ type SortState = {
   key: SortKey;
   direction: SortDirection;
 };
+type SupplyFilter = {
+  min: string;
+  max: string;
+};
 
 type PeriodReturns = Record<PeriodKey, number | null>;
 
@@ -51,7 +55,12 @@ type ApiError = {
 
 const PERIODS: PeriodKey[] = ["1d", "7d", "30d", "90d", "1y"];
 const FAVORITES_STORAGE_KEY = "gmtrade:favorites:v1";
+const SUPPLY_FILTER_STORAGE_KEY = "gmtrade:supply-filter:v1";
 const GMTRADE_APP_URL = "https://gmtrade.xyz";
+const EMPTY_SUPPLY_FILTER: SupplyFilter = {
+  min: "",
+  max: "",
+};
 
 function shortAddress(value: string) {
   if (!value) return "";
@@ -169,6 +178,14 @@ function compareSortValues(
   return direction === "asc" ? leftNumber - rightNumber : rightNumber - leftNumber;
 }
 
+function parseSupplyFilterValue(value: string) {
+  const normalized = value.trim().replace(/,/g, "");
+  if (!normalized) return null;
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function storedFavorites() {
   try {
     const raw = localStorage.getItem(FAVORITES_STORAGE_KEY);
@@ -189,6 +206,31 @@ function persistFavorites(favorites: Set<string>) {
       FAVORITES_STORAGE_KEY,
       JSON.stringify(Array.from(favorites).sort())
     );
+  } catch {
+    // localStorage can be unavailable in private or restricted browser contexts.
+  }
+}
+
+function storedSupplyFilter(): SupplyFilter {
+  try {
+    const raw = localStorage.getItem(SUPPLY_FILTER_STORAGE_KEY);
+    if (!raw) return EMPTY_SUPPLY_FILTER;
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return EMPTY_SUPPLY_FILTER;
+
+    return {
+      min: typeof parsed.min === "string" ? parsed.min : "",
+      max: typeof parsed.max === "string" ? parsed.max : "",
+    };
+  } catch {
+    return EMPTY_SUPPLY_FILTER;
+  }
+}
+
+function persistSupplyFilter(filter: SupplyFilter) {
+  try {
+    localStorage.setItem(SUPPLY_FILTER_STORAGE_KEY, JSON.stringify(filter));
   } catch {
     // localStorage can be unavailable in private or restricted browser contexts.
   }
@@ -269,6 +311,9 @@ export default function GMTradePage() {
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [sortState, setSortState] = useState<SortState | null>(null);
+  const [supplyFilter, setSupplyFilter] =
+    useState<SupplyFilter>(EMPTY_SUPPLY_FILTER);
+  const [supplyFilterLoaded, setSupplyFilterLoaded] = useState(false);
 
   const loadPools = useCallback(async () => {
     setLoading(true);
@@ -307,6 +352,16 @@ export default function GMTradePage() {
     setFavorites(storedFavorites());
   }, []);
 
+  useEffect(() => {
+    setSupplyFilter(storedSupplyFilter());
+    setSupplyFilterLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!supplyFilterLoaded) return;
+    persistSupplyFilter(supplyFilter);
+  }, [supplyFilter, supplyFilterLoaded]);
+
   const toggleFavorite = useCallback((row: PoolRow) => {
     setFavorites((current) => {
       const next = new Set(current);
@@ -323,6 +378,13 @@ export default function GMTradePage() {
     });
   }, []);
 
+  const updateSupplyFilter = useCallback(
+    (field: keyof SupplyFilter, value: string) => {
+      setSupplyFilter((current) => ({ ...current, [field]: value }));
+    },
+    []
+  );
+
   const favoritePoolCount = useMemo(() => {
     if (!data) return favorites.size;
 
@@ -333,6 +395,8 @@ export default function GMTradePage() {
     if (!data) return [];
 
     const normalizedQuery = query.trim().toLowerCase();
+    const minSupply = parseSupplyFilterValue(supplyFilter.min);
+    const maxSupply = parseSupplyFilterValue(supplyFilter.max);
 
     return data.rows.filter((row) => {
       const matchesType = typeFilter === "ALL" || row.type === typeFilter;
@@ -342,10 +406,18 @@ export default function GMTradePage() {
         !normalizedQuery ||
         row.name.toLowerCase().includes(normalizedQuery) ||
         row.mint.toLowerCase().includes(normalizedQuery);
+      const matchesMinSupply = minSupply === null || row.supply >= minSupply;
+      const matchesMaxSupply = maxSupply === null || row.supply <= maxSupply;
 
-      return matchesType && matchesFavorite && matchesQuery;
+      return (
+        matchesType &&
+        matchesFavorite &&
+        matchesQuery &&
+        matchesMinSupply &&
+        matchesMaxSupply
+      );
     });
-  }, [data, favorites, favoritesOnly, query, typeFilter]);
+  }, [data, favorites, favoritesOnly, query, supplyFilter, typeFilter]);
 
   const sortedRows = useMemo(() => {
     if (!sortState) return filteredRows;
@@ -457,7 +529,7 @@ export default function GMTradePage() {
             </h1>
           </div>
 
-          <div className="flex w-full flex-col gap-3 lg:max-w-3xl lg:flex-row">
+          <div className="flex w-full flex-col gap-3 lg:max-w-5xl lg:flex-row lg:flex-wrap lg:items-center lg:justify-end">
             <label className="sr-only" htmlFor="gmtrade-search">
               Search pools
             </label>
@@ -466,7 +538,7 @@ export default function GMTradePage() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search by pool or mint"
-              className="min-h-11 flex-1 rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-zinc-600 focus:border-emerald-500"
+              className="min-h-11 flex-1 rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-zinc-600 focus:border-emerald-500 lg:min-w-[240px]"
               autoComplete="off"
               spellCheck={false}
             />
@@ -485,6 +557,36 @@ export default function GMTradePage() {
                   {value}
                 </button>
               ))}
+            </div>
+            <div className="grid grid-cols-2 gap-2 lg:w-[220px]">
+              <label className="sr-only" htmlFor="gmtrade-supply-min">
+                Minimum supply
+              </label>
+              <input
+                id="gmtrade-supply-min"
+                type="number"
+                min="0"
+                step="any"
+                value={supplyFilter.min}
+                onChange={(event) => updateSupplyFilter("min", event.target.value)}
+                placeholder="Supply min"
+                className="min-h-11 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-3 text-sm text-white outline-none transition-colors placeholder:text-zinc-600 focus:border-emerald-500"
+                autoComplete="off"
+              />
+              <label className="sr-only" htmlFor="gmtrade-supply-max">
+                Maximum supply
+              </label>
+              <input
+                id="gmtrade-supply-max"
+                type="number"
+                min="0"
+                step="any"
+                value={supplyFilter.max}
+                onChange={(event) => updateSupplyFilter("max", event.target.value)}
+                placeholder="Supply max"
+                className="min-h-11 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-3 text-sm text-white outline-none transition-colors placeholder:text-zinc-600 focus:border-emerald-500"
+                autoComplete="off"
+              />
             </div>
             <button
               type="button"
