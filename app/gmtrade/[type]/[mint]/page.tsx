@@ -55,6 +55,7 @@ const CHART_SCALE_MODES: { key: ChartScaleMode; label: string }[] = [
   { key: "change", label: "Change %" },
 ];
 const DAY_MS = 24 * 60 * 60 * 1000;
+const GMTRADE_APP_URL = "https://gmtrade.xyz";
 
 function shortAddress(value: string) {
   if (!value) return "";
@@ -178,6 +179,10 @@ function poolTypeTone(type: PoolType) {
   return type === "GM"
     ? "border-cyan-400/30 bg-cyan-400/10 text-cyan-200"
     : "border-amber-300/30 bg-amber-300/10 text-amber-100";
+}
+
+function gmTradePoolUrl(type: string, mint: string) {
+  return `${GMTRADE_APP_URL}/pools/poolDetail/${type}/${encodeURIComponent(mint)}`;
 }
 
 function BackIcon() {
@@ -748,7 +753,14 @@ export default function GMTradePoolDetailPage() {
               <BackIcon />
               GMTRADE pools
             </Link>
-            <div className="mt-4 flex min-w-0 items-center gap-3">
+            <a
+              href={gmTradePoolUrl(data?.type ?? type, data?.mint ?? mint)}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Open ${data?.name ?? shortAddress(mint)} on GMTrade`}
+              className="group/pool mt-4 flex min-w-0 items-center gap-3 rounded-md outline-none transition-colors hover:text-emerald-200 focus-visible:ring-2 focus-visible:ring-emerald-400/70"
+              title="Open pool on GMTrade"
+            >
               <span
                 className={`rounded border px-2 py-1 text-xs font-semibold ${
                   data ? poolTypeTone(data.type) : "border-zinc-700 text-zinc-400"
@@ -756,11 +768,19 @@ export default function GMTradePoolDetailPage() {
               >
                 {data?.type ?? type}
               </span>
-              <h1 className="truncate text-3xl font-bold text-white md:text-4xl">
+              <h1 className="truncate text-3xl font-bold text-white transition-colors group-hover/pool:text-emerald-100 md:text-4xl">
                 {data?.name ?? shortAddress(mint)}
               </h1>
-            </div>
-            <p className="mt-2 font-mono text-xs text-zinc-500">{mint}</p>
+            </a>
+            <a
+              href={gmTradePoolUrl(data?.type ?? type, data?.mint ?? mint)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-block max-w-full truncate font-mono text-xs text-zinc-500 transition-colors hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70"
+              title="Open pool on GMTrade"
+            >
+              {mint}
+            </a>
           </div>
 
           <button
