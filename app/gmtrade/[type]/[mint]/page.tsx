@@ -210,6 +210,93 @@ function storedPositionWallet() {
   }
 }
 
+type SvgPoint = {
+  x: number;
+  y: number;
+};
+
+function svgNumber(value: number) {
+  return value.toFixed(2);
+}
+
+function buildLinearPath(points: SvgPoint[]) {
+  return points
+    .map(
+      (point, index) =>
+        `${index === 0 ? "M" : "L"} ${svgNumber(point.x)} ${svgNumber(point.y)}`
+    )
+    .join(" ");
+}
+
+function buildSmoothPath(points: SvgPoint[]) {
+  if (points.length <= 2) return buildLinearPath(points);
+
+  const intervalSlopes: number[] = [];
+
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const current = points[index];
+    const next = points[index + 1];
+    const dx = next.x - current.x;
+
+    if (dx <= 0) return buildLinearPath(points);
+
+    intervalSlopes.push((next.y - current.y) / dx);
+  }
+
+  const tangents = points.map((_, index) => {
+    if (index === 0) return intervalSlopes[0];
+    if (index === points.length - 1) return intervalSlopes[intervalSlopes.length - 1];
+
+    const previousSlope = intervalSlopes[index - 1];
+    const nextSlope = intervalSlopes[index];
+
+    return previousSlope * nextSlope <= 0 ? 0 : (previousSlope + nextSlope) / 2;
+  });
+
+  intervalSlopes.forEach((slope, index) => {
+    if (slope === 0) {
+      tangents[index] = 0;
+      tangents[index + 1] = 0;
+      return;
+    }
+
+    const leftRatio = tangents[index] / slope;
+    const rightRatio = tangents[index + 1] / slope;
+    const ratioLength = Math.hypot(leftRatio, rightRatio);
+
+    if (ratioLength > 3) {
+      const scale = 3 / ratioLength;
+      tangents[index] = scale * leftRatio * slope;
+      tangents[index + 1] = scale * rightRatio * slope;
+    }
+  });
+
+  const [firstPoint] = points;
+  const commands = [`M ${svgNumber(firstPoint.x)} ${svgNumber(firstPoint.y)}`];
+
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const current = points[index];
+    const next = points[index + 1];
+    const dx = next.x - current.x;
+    const controlOne = {
+      x: current.x + dx / 3,
+      y: current.y + (tangents[index] * dx) / 3,
+    };
+    const controlTwo = {
+      x: next.x - dx / 3,
+      y: next.y - (tangents[index + 1] * dx) / 3,
+    };
+
+    commands.push(
+      `C ${svgNumber(controlOne.x)} ${svgNumber(controlOne.y)} ${svgNumber(
+        controlTwo.x
+      )} ${svgNumber(controlTwo.y)} ${svgNumber(next.x)} ${svgNumber(next.y)}`
+    );
+  }
+
+  return commands.join(" ");
+}
+
 function BackIcon() {
   return (
     <svg
@@ -364,12 +451,10 @@ function PriceChart({
           })()
         : null;
 
-    const path = mappedPoints
-      .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
-      .join(" ");
-    const areaPath = `${path} L ${mappedPoints.at(-1)?.x.toFixed(2)} ${
+    const path = buildSmoothPath(mappedPoints);
+    const areaPath = `${path} L ${svgNumber(mappedPoints.at(-1)?.x ?? 0)} ${
       height - padding.bottom
-    } L ${mappedPoints[0].x.toFixed(2)} ${height - padding.bottom} Z`;
+    } L ${svgNumber(mappedPoints[0].x)} ${height - padding.bottom} Z`;
     const yTicks = Array.from({ length: 5 }, (_, index) => {
       const ratio = index / 4;
       const value = yMax - ratio * yRange;
@@ -390,17 +475,16 @@ function PriceChart({
     const overviewBottom = overviewHeight - 18;
     const overviewInnerHeight = overviewBottom - overviewTop;
     const overviewTimeRange = availableEnd - availableStart || 1;
-    const overviewPolyline = validPoints
-      .map((point) => {
-        const x =
-          padding.left +
-          ((point.time - availableStart) / overviewTimeRange) * innerWidth;
-        const y =
-          overviewTop +
-          (1 - (point.price_usd - allMinPrice) / overviewRange) * overviewInnerHeight;
-        return `${x.toFixed(2)},${y.toFixed(2)}`;
-      })
-      .join(" ");
+    const overviewPoints = validPoints.map((point) => {
+      const x =
+        padding.left +
+        ((point.time - availableStart) / overviewTimeRange) * innerWidth;
+      const y =
+        overviewTop +
+        (1 - (point.price_usd - allMinPrice) / overviewRange) * overviewInnerHeight;
+      return { x, y };
+    });
+    const overviewPath = buildSmoothPath(overviewPoints);
     const overviewSelectionX =
       padding.left +
       ((selectedStartTime - availableStart) / overviewTimeRange) * innerWidth;
@@ -419,7 +503,7 @@ function PriceChart({
       yTicks,
       xTicks,
       mappedPoints,
-      overviewPolyline,
+      overviewPath,
       overviewSelectionX,
       overviewSelectionWidth,
       entryMarker: mappedEntryMarker,
@@ -776,9 +860,9 @@ function PriceChart({
           rx="8"
           fill="rgba(255,255,255,0.025)"
         />
-        <polyline
+        <path
+          d={chart.overviewPath}
           fill="none"
-          points={chart.overviewPolyline}
           stroke="rgba(161,161,170,0.5)"
           strokeWidth="2"
           vectorEffect="non-scaling-stroke"
