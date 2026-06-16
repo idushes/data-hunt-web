@@ -44,6 +44,7 @@ type ApiError = {
 };
 
 const PERIODS: PeriodKey[] = ["1d", "7d", "30d", "90d"];
+const FAVORITES_STORAGE_KEY = "gmtrade:favorites:v1";
 
 function shortAddress(value: string) {
   if (!value) return "";
@@ -110,6 +111,58 @@ function poolTypeTone(type: PoolType) {
     : "border-amber-300/30 bg-amber-300/10 text-amber-100";
 }
 
+function favoriteKey(type: PoolType, mint: string) {
+  return `${type}:${mint}`;
+}
+
+function favoriteKeyForRow(row: PoolRow) {
+  return favoriteKey(row.type, row.mint);
+}
+
+function storedFavorites() {
+  try {
+    const raw = localStorage.getItem(FAVORITES_STORAGE_KEY);
+    if (!raw) return new Set<string>();
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return new Set<string>();
+
+    return new Set(parsed.filter((item): item is string => typeof item === "string"));
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function persistFavorites(favorites: Set<string>) {
+  try {
+    localStorage.setItem(
+      FAVORITES_STORAGE_KEY,
+      JSON.stringify(Array.from(favorites).sort())
+    );
+  } catch {
+    // localStorage can be unavailable in private or restricted browser contexts.
+  }
+}
+
+function StarIcon({ filled = false }: { filled?: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-4 w-4"
+      fill={filled ? "currentColor" : "none"}
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={1.8}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="m11.48 3.5 2.52 5.1 5.63.82-4.07 3.96.96 5.6-5.04-2.65-5.03 2.65.96-5.6-4.07-3.96 5.63-.82 2.51-5.1Z"
+      />
+    </svg>
+  );
+}
+
 function ArrowIcon() {
   return (
     <svg
@@ -131,6 +184,8 @@ export default function GMTradePage() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<PoolTypeFilter>("ALL");
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
 
   const loadPools = useCallback(async () => {
     setLoading(true);
@@ -165,6 +220,32 @@ export default function GMTradePage() {
     void loadPools();
   }, [loadPools]);
 
+  useEffect(() => {
+    setFavorites(storedFavorites());
+  }, []);
+
+  const toggleFavorite = useCallback((row: PoolRow) => {
+    setFavorites((current) => {
+      const next = new Set(current);
+      const key = favoriteKeyForRow(row);
+
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+
+      persistFavorites(next);
+      return next;
+    });
+  }, []);
+
+  const favoritePoolCount = useMemo(() => {
+    if (!data) return favorites.size;
+
+    return data.rows.filter((row) => favorites.has(favoriteKeyForRow(row))).length;
+  }, [data, favorites]);
+
   const filteredRows = useMemo(() => {
     if (!data) return [];
 
@@ -172,14 +253,16 @@ export default function GMTradePage() {
 
     return data.rows.filter((row) => {
       const matchesType = typeFilter === "ALL" || row.type === typeFilter;
+      const matchesFavorite =
+        !favoritesOnly || favorites.has(favoriteKeyForRow(row));
       const matchesQuery =
         !normalizedQuery ||
         row.name.toLowerCase().includes(normalizedQuery) ||
         row.mint.toLowerCase().includes(normalizedQuery);
 
-      return matchesType && matchesQuery;
+      return matchesType && matchesFavorite && matchesQuery;
     });
-  }, [data, query, typeFilter]);
+  }, [data, favorites, favoritesOnly, query, typeFilter]);
 
   const summaryItems = useMemo(() => {
     if (!data) return [];
@@ -227,7 +310,7 @@ export default function GMTradePage() {
             </h1>
           </div>
 
-          <div className="flex w-full flex-col gap-3 lg:max-w-2xl lg:flex-row">
+          <div className="flex w-full flex-col gap-3 lg:max-w-3xl lg:flex-row">
             <label className="sr-only" htmlFor="gmtrade-search">
               Search pools
             </label>
@@ -256,6 +339,20 @@ export default function GMTradePage() {
                 </button>
               ))}
             </div>
+            <button
+              type="button"
+              onClick={() => setFavoritesOnly((value) => !value)}
+              aria-pressed={favoritesOnly}
+              className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-semibold transition-colors ${
+                favoritesOnly
+                  ? "border-yellow-300 bg-yellow-300 text-black"
+                  : "border-zinc-800 bg-zinc-950 text-zinc-300 hover:bg-zinc-900"
+              }`}
+              title="Show favorite pools"
+            >
+              <StarIcon filled={favoritesOnly} />
+              <span>Favorites</span>
+            </button>
             <button
               type="button"
               onClick={() => void loadPools()}
@@ -291,6 +388,13 @@ export default function GMTradePage() {
             <span>
               Showing <span className="text-zinc-200">{filteredRows.length}</span>{" "}
               of <span className="text-zinc-200">{data.rows.length}</span> pools
+              {favoritesOnly && (
+                <>
+                  {" "}
+                  · <span className="text-zinc-200">{favoritePoolCount}</span>{" "}
+                  favorites
+                </>
+              )}
             </span>
             <span>
               Source updated{" "}
@@ -325,6 +429,7 @@ export default function GMTradePage() {
               <table className="w-full min-w-[1180px] border-collapse text-left text-sm">
                 <thead className="bg-zinc-950 text-xs uppercase tracking-[0.12em] text-zinc-500">
                   <tr>
+                    <th className="w-12 px-4 py-3 font-medium">Fav</th>
                     <th className="px-4 py-3 font-medium">Pool</th>
                     <th className="px-4 py-3 font-medium">Price</th>
                     <th className="px-4 py-3 font-medium">Liquidity</th>
@@ -340,6 +445,30 @@ export default function GMTradePage() {
                 <tbody className="divide-y divide-white/10 bg-black">
                   {filteredRows.map((row) => (
                     <tr key={`${row.type}-${row.mint}`} className="hover:bg-zinc-950">
+                      <td className="px-4 py-4">
+                        <button
+                          type="button"
+                          onClick={() => toggleFavorite(row)}
+                          aria-pressed={favorites.has(favoriteKeyForRow(row))}
+                          aria-label={
+                            favorites.has(favoriteKeyForRow(row))
+                              ? `Remove ${row.name} from favorites`
+                              : `Add ${row.name} to favorites`
+                          }
+                          className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${
+                            favorites.has(favoriteKeyForRow(row))
+                              ? "border-yellow-300/60 bg-yellow-300/15 text-yellow-200"
+                              : "border-zinc-800 bg-zinc-950 text-zinc-500 hover:border-yellow-300/40 hover:text-yellow-200"
+                          }`}
+                          title={
+                            favorites.has(favoriteKeyForRow(row))
+                              ? "Remove from favorites"
+                              : "Add to favorites"
+                          }
+                        >
+                          <StarIcon filled={favorites.has(favoriteKeyForRow(row))} />
+                        </button>
+                      </td>
                       <td className="px-4 py-4">
                         <div className="flex min-w-0 items-center gap-3">
                           <span
