@@ -122,18 +122,17 @@ function formatSupplyUsd(value: number) {
   });
 }
 
-function formatTokenAmount(value: number) {
-  if (!Number.isFinite(value)) return "-";
-  return value.toLocaleString("en-US", {
-    maximumFractionDigits: value >= 1 ? 4 : 8,
-  });
-}
-
 function formatPercent(value: number | null) {
   if (value === null || !Number.isFinite(value)) return "-";
   return `${value.toLocaleString("en-US", {
     maximumFractionDigits: 0,
   })}%`;
+}
+
+function formatSignedUsd(value: number | null) {
+  if (value === null || !Number.isFinite(value)) return "-";
+  if (value === 0) return formatUsd(value);
+  return value > 0 ? `+${formatUsd(value)}` : formatUsd(value);
 }
 
 function formatTimestamp(value: string) {
@@ -880,16 +879,9 @@ export default function GMTradePage() {
                               {row.type}
                             </span>
                             <div className="min-w-0">
-                              <div className="flex max-w-[320px] items-center gap-2">
-                                <p className="truncate font-medium text-white transition-colors group-hover/pool:text-emerald-100">
-                                  {row.name}
-                                </p>
-                                {position && (
-                                  <span className="shrink-0 rounded border border-emerald-300/40 bg-emerald-300/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-200">
-                                    Owned
-                                  </span>
-                                )}
-                              </div>
+                              <p className="max-w-[320px] truncate font-medium text-white transition-colors group-hover/pool:text-emerald-100">
+                                {row.name}
+                              </p>
                               <p className="font-mono text-xs text-zinc-500 transition-colors group-hover/pool:text-zinc-300">
                                 {shortAddress(row.mint)}
                               </p>
@@ -898,14 +890,9 @@ export default function GMTradePage() {
                         </td>
                         <td className="px-4 py-4 font-mono">
                           {position ? (
-                            <div>
-                              <p className="font-semibold text-emerald-200">
-                                {formatUsd(position.value_usd)}
-                              </p>
-                              <p className="mt-1 text-xs text-zinc-500">
-                                {formatTokenAmount(position.balance)} pool tokens
-                              </p>
-                            </div>
+                            <span className="font-semibold text-emerald-200">
+                              {formatUsd(position.value_usd)}
+                            </span>
                           ) : (
                             <span className="text-zinc-700">-</span>
                           )}
@@ -916,8 +903,12 @@ export default function GMTradePage() {
                               <p className={returnTone(position.total_apy_percent)}>
                                 {formatPercent(position.total_apy_percent)}
                               </p>
-                              <p className="mt-1 text-xs text-zinc-500">
-                                {formatUsd(position.estimated_yearly_usd)}/yr
+                              <p
+                                className={`mt-1 text-xs ${returnTone(
+                                  position.estimated_yearly_usd
+                                )}`}
+                              >
+                                {formatSignedUsd(position.estimated_yearly_usd)}
                               </p>
                             </div>
                           ) : (
