@@ -786,6 +786,10 @@ export default function GMTradePage() {
                   <span className="text-zinc-200">
                     {formatUsd(positions.summary.total_value_usd)}
                   </span>{" "}
+                  · PnL{" "}
+                  <span className={returnTone(positions.summary.pnl_usd)}>
+                    {formatSignedUsd(positions.summary.pnl_usd)}
+                  </span>{" "}
                   in {shortAddress(positionWallet)}
                 </>
               )}
