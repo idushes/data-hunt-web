@@ -602,6 +602,7 @@ export default function GMTradePage() {
 
       return (
         <th
+          key={key}
           className={className}
           aria-sort={
             direction === "asc"
