@@ -12,7 +12,6 @@ type SortKey =
   | "pool"
   | "position_value"
   | "position_apy"
-  | "liquidity"
   | "supply"
   | PeriodKey;
 type SortDirection = "asc" | "desc";
@@ -195,7 +194,6 @@ function sortValue(
   if (key === "pool") return row.name.toLowerCase();
   if (key === "position_value") return position?.value_usd ?? null;
   if (key === "position_apy") return position?.total_apy_percent ?? null;
-  if (key === "liquidity") return row.liquidity_usd;
   if (key === "supply") return row.supply;
   if (isPeriodSortKey(key)) return row.period_returns[key];
   return "";
@@ -815,7 +813,6 @@ export default function GMTradePage() {
                     {sortableHeader("pool", "Pool")}
                     {sortableHeader("position_value", "Position")}
                     {sortableHeader("position_apy", "Yearly APY")}
-                    {sortableHeader("liquidity", "Liquidity")}
                     {sortableHeader("1d", "1D")}
                     {sortableHeader("7d", "7D")}
                     {sortableHeader("30d", "30D")}
@@ -914,9 +911,6 @@ export default function GMTradePage() {
                           ) : (
                             <span className="text-zinc-700">-</span>
                           )}
-                        </td>
-                        <td className="px-4 py-4 font-mono text-white">
-                          {formatUsd(row.liquidity_usd)}
                         </td>
                         {PERIODS.map((period) => (
                           <td
