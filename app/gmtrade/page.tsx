@@ -88,6 +88,7 @@ type ApiError = {
 };
 
 const PERIODS: PeriodKey[] = ["1d", "7d", "30d", "90d", "1y"];
+const TABLE_PERIODS: PeriodKey[] = ["7d", "30d", "90d", "1y"];
 const FAVORITES_STORAGE_KEY = "gmtrade:favorites:v1";
 const SUPPLY_FILTER_STORAGE_KEY = "gmtrade:supply-filter:v1";
 const POSITION_WALLET_STORAGE_KEY = "gmtrade:position-wallet:v1";
@@ -804,7 +805,7 @@ export default function GMTradePage() {
         {!loading && data && filteredRows.length > 0 && (
           <section className="mt-8 overflow-hidden rounded-lg border border-white/10">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1280px] border-collapse text-left text-sm">
+              <table className="w-full min-w-[1180px] border-collapse text-left text-sm">
                 <thead className="bg-zinc-950 text-xs uppercase tracking-[0.12em] text-zinc-500">
                   <tr>
                     {sortableHeader(
@@ -815,11 +816,9 @@ export default function GMTradePage() {
                     {sortableHeader("pool", "Pool")}
                     {sortableHeader("position_value", "Position")}
                     {sortableHeader("position_apy", "Yearly APY")}
-                    {sortableHeader("1d", "1D")}
-                    {sortableHeader("7d", "7D")}
-                    {sortableHeader("30d", "30D")}
-                    {sortableHeader("90d", "90D")}
-                    {sortableHeader("1y", "1Y")}
+                    {TABLE_PERIODS.map((period) =>
+                      sortableHeader(period, period.toUpperCase())
+                    )}
                     {sortableHeader("supply", "Supply")}
                     <th className="px-4 py-3 font-medium">Chart</th>
                   </tr>
@@ -920,7 +919,7 @@ export default function GMTradePage() {
                             <span className="text-zinc-700">-</span>
                           )}
                         </td>
-                        {PERIODS.map((period) => (
+                        {TABLE_PERIODS.map((period) => (
                           <td
                             key={period}
                             className={`px-4 py-4 font-mono ${returnTone(
