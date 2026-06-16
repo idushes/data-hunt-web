@@ -75,10 +75,13 @@ function formatUsd(value: number | null) {
   }).format(value);
 }
 
-function formatNumber(value: number) {
+function formatSupplyUsd(value: number) {
   if (!Number.isFinite(value)) return "-";
   return value.toLocaleString("en-US", {
-    maximumFractionDigits: value >= 1 ? 2 : 6,
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   });
 }
 
@@ -695,7 +698,7 @@ export default function GMTradePage() {
                         </td>
                       ))}
                       <td className="px-4 py-4 font-mono text-zinc-300">
-                        {formatNumber(row.supply)}
+                        {formatSupplyUsd(row.supply)}
                       </td>
                       <td className="px-4 py-4">
                         <Link
