@@ -3,6 +3,15 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Header from "@/components/landing/Header";
+import {
+  type CacheInfo,
+  GMTRADE_CACHE_REFRESH_MS,
+  GMTRADE_POOLS_CACHE_KEY,
+  cacheInfo,
+  gmTradePositionsCacheKey,
+  readCachedRecord,
+  writeCachedRecord,
+} from "@/app/gmtrade/cache";
 
 type PoolType = "GM" | "GLV";
 type PeriodKey = "1d" | "7d" | "30d" | "90d" | "1y";
@@ -402,6 +411,9 @@ export default function GMTradePage() {
   const [positions, setPositions] = useState<PositionsResponse | null>(null);
   const [error, setError] = useState("");
   const [positionError, setPositionError] = useState("");
+  const [cacheNotice, setCacheNotice] = useState("");
+  const [poolsCacheInfo, setPoolsCacheInfo] = useState<CacheInfo | null>(null);
+  const [positionsCacheInfo, setPositionsCacheInfo] = useState<CacheInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [positionLoading, setPositionLoading] = useState(false);
   const [query, setQuery] = useState("");
@@ -431,14 +443,31 @@ export default function GMTradePage() {
         throw new Error(message);
       }
 
-      setData(payload as PoolsResponse);
+      const poolsPayload = payload as PoolsResponse;
+      const cached = writeCachedRecord(GMTRADE_POOLS_CACHE_KEY, poolsPayload);
+      setData(poolsPayload);
+      setPoolsCacheInfo(cached ? cacheInfo(cached, false) : null);
+      setCacheNotice("");
     } catch (requestError) {
       const message =
         requestError instanceof Error
           ? requestError.message
           : "Failed to load GMTRADE pools.";
-      setError(message);
-      setData(null);
+      const cached = readCachedRecord<PoolsResponse>(GMTRADE_POOLS_CACHE_KEY);
+
+      if (cached) {
+        setData(cached.payload);
+        setPoolsCacheInfo(cacheInfo(cached, true));
+        setCacheNotice(
+          `${message} Showing cached pools from ${formatTimestamp(cached.cachedAt)}.`
+        );
+        setError("");
+      } else {
+        setError(message);
+        setCacheNotice("");
+        setPoolsCacheInfo(null);
+        setData(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -451,6 +480,7 @@ export default function GMTradePage() {
       setPositions(null);
       setPositionWallet("");
       setPositionError("");
+      setPositionsCacheInfo(null);
       persistPositionWallet("");
       return;
     }
@@ -473,9 +503,15 @@ export default function GMTradePage() {
         throw new Error(message);
       }
 
-      setPositions(payload as PositionsResponse);
+      const positionsPayload = payload as PositionsResponse;
+      const cached = writeCachedRecord(
+        gmTradePositionsCacheKey(normalizedWallet),
+        positionsPayload
+      );
+      setPositions(positionsPayload);
       setPositionWallet(normalizedWallet);
       setWalletInput(normalizedWallet);
+      setPositionsCacheInfo(cached ? cacheInfo(cached, false) : null);
       setSortState((current) =>
         current ?? { key: "position_value", direction: "desc" }
       );
@@ -485,9 +521,25 @@ export default function GMTradePage() {
         requestError instanceof Error
           ? requestError.message
           : "Failed to load wallet positions.";
-      setPositionError(message);
-      setPositions(null);
-      setPositionWallet("");
+      const cached = readCachedRecord<PositionsResponse>(
+        gmTradePositionsCacheKey(normalizedWallet)
+      );
+
+      if (cached) {
+        setPositions(cached.payload);
+        setPositionWallet(normalizedWallet);
+        setWalletInput(normalizedWallet);
+        setPositionsCacheInfo(cacheInfo(cached, true));
+        setPositionError(
+          `${message} Showing cached positions from ${formatTimestamp(cached.cachedAt)}.`
+        );
+        persistPositionWallet(normalizedWallet);
+      } else {
+        setPositionError(message);
+        setPositions(null);
+        setPositionWallet("");
+        setPositionsCacheInfo(null);
+      }
     } finally {
       setPositionLoading(false);
     }
@@ -501,6 +553,16 @@ export default function GMTradePage() {
   }, [loadPools, loadPositions, positionWallet]);
 
   useEffect(() => {
+    const cached = readCachedRecord<PoolsResponse>(GMTRADE_POOLS_CACHE_KEY);
+
+    if (cached) {
+      setData(cached.payload);
+      setPoolsCacheInfo(cacheInfo(cached, true));
+      setCacheNotice(
+        `Showing cached pools from ${formatTimestamp(cached.cachedAt)} while refreshing.`
+      );
+    }
+
     void loadPools();
   }, [loadPools]);
 
@@ -520,9 +582,28 @@ export default function GMTradePage() {
 
     if (!wallet) return;
 
+    const cached = readCachedRecord<PositionsResponse>(
+      gmTradePositionsCacheKey(wallet)
+    );
+
+    if (cached) {
+      setPositions(cached.payload);
+      setPositionWallet(wallet);
+      setPositionsCacheInfo(cacheInfo(cached, true));
+      setPositionError(
+        `Showing cached positions from ${formatTimestamp(cached.cachedAt)} while refreshing.`
+      );
+    }
+
     setWalletInput(wallet);
     void loadPositions(wallet);
   }, [loadPositions]);
+
+  useEffect(() => {
+    const interval = window.setInterval(refreshData, GMTRADE_CACHE_REFRESH_MS);
+
+    return () => window.clearInterval(interval);
+  }, [refreshData]);
 
   useEffect(() => {
     if (!supplyFilterLoaded) return;
@@ -805,13 +886,38 @@ export default function GMTradePage() {
                   · <span className="text-zinc-200">loading positions</span>
                 </>
               )}
+              {loading && data && (
+                <>
+                  {" "}
+                  · <span className="text-zinc-200">refreshing</span>
+                </>
+              )}
             </span>
             <span>
-              Source updated{" "}
+              {poolsCacheInfo?.stale ? "Cached" : "Source updated"}{" "}
               <span className="text-zinc-200">
-                {formatTimestamp(data.summary.updated_at)}
+                {formatTimestamp(
+                  poolsCacheInfo?.stale
+                    ? poolsCacheInfo.cachedAt
+                    : data.summary.updated_at
+                )}
               </span>
+              {positionsCacheInfo?.stale && (
+                <>
+                  {" "}
+                  · positions cached{" "}
+                  <span className="text-zinc-200">
+                    {formatTimestamp(positionsCacheInfo.cachedAt)}
+                  </span>
+                </>
+              )}
             </span>
+          </section>
+        )}
+
+        {cacheNotice && (
+          <section className="mt-4 rounded-lg border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-100">
+            {cacheNotice}
           </section>
         )}
 
@@ -827,7 +933,7 @@ export default function GMTradePage() {
           </section>
         )}
 
-        {loading && (
+        {loading && !data && (
           <section className="mt-10 flex items-center justify-center py-20">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
           </section>
@@ -839,7 +945,7 @@ export default function GMTradePage() {
           </section>
         )}
 
-        {!loading && data && filteredRows.length > 0 && (
+        {data && filteredRows.length > 0 && (
           <section className="mt-8 overflow-hidden rounded-lg border border-white/10">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1180px] border-collapse text-left text-sm">

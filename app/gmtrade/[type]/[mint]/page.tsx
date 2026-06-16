@@ -11,6 +11,15 @@ import {
   useState,
 } from "react";
 import Header from "@/components/landing/Header";
+import {
+  type CacheInfo,
+  GMTRADE_CACHE_REFRESH_MS,
+  cacheInfo,
+  gmTradePoolDetailCacheKey,
+  gmTradePositionsCacheKey,
+  readCachedRecord,
+  writeCachedRecord,
+} from "@/app/gmtrade/cache";
 
 type PoolType = "GM" | "GLV";
 type PeriodKey = "1d" | "7d" | "30d" | "90d" | "1y";
@@ -890,6 +899,8 @@ export default function GMTradePoolDetailPage() {
   const [data, setData] = useState<PoolDetail | null>(null);
   const [position, setPosition] = useState<PositionRow | null>(null);
   const [error, setError] = useState("");
+  const [cacheNotice, setCacheNotice] = useState("");
+  const [poolCacheInfo, setPoolCacheInfo] = useState<CacheInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadPool = useCallback(async () => {
@@ -917,22 +928,56 @@ export default function GMTradePoolDetailPage() {
         throw new Error(message);
       }
 
-      setData(payload as PoolDetail);
+      const detailPayload = payload as PoolDetail;
+      const cached = writeCachedRecord(
+        gmTradePoolDetailCacheKey(type, mint),
+        detailPayload
+      );
+      setData(detailPayload);
+      setPoolCacheInfo(cached ? cacheInfo(cached, false) : null);
+      setCacheNotice("");
     } catch (requestError) {
       const message =
         requestError instanceof Error
           ? requestError.message
           : "Failed to load pool chart.";
-      setError(message);
-      setData(null);
+      const cached = readCachedRecord<PoolDetail>(
+        gmTradePoolDetailCacheKey(type, mint)
+      );
+
+      if (cached) {
+        setData(cached.payload);
+        setPoolCacheInfo(cacheInfo(cached, true));
+        setCacheNotice(
+          `${message} Showing cached chart from ${formatTimestamp(cached.cachedAt)}.`
+        );
+        setError("");
+      } else {
+        setError(message);
+        setCacheNotice("");
+        setPoolCacheInfo(null);
+        setData(null);
+      }
     } finally {
       setLoading(false);
     }
   }, [mint, type]);
 
   useEffect(() => {
+    const cached = readCachedRecord<PoolDetail>(
+      gmTradePoolDetailCacheKey(type, mint)
+    );
+
+    if (cached) {
+      setData(cached.payload);
+      setPoolCacheInfo(cacheInfo(cached, true));
+      setCacheNotice(
+        `Showing cached chart from ${formatTimestamp(cached.cachedAt)} while refreshing.`
+      );
+    }
+
     void loadPool();
-  }, [loadPool]);
+  }, [loadPool, mint, type]);
 
   const loadPosition = useCallback(async () => {
     if ((type !== "GM" && type !== "GLV") || !mint) {
@@ -949,6 +994,8 @@ export default function GMTradePoolDetailPage() {
       return;
     }
 
+    const cacheKey = gmTradePositionsCacheKey(wallet);
+
     try {
       const response = await fetch(
         `/api/gmtrade?wallet=${encodeURIComponent(wallet)}`,
@@ -964,19 +1011,37 @@ export default function GMTradePoolDetailPage() {
         );
       }
 
-      const currentPosition = (payload as PositionsResponse).rows.find(
+      const positionsPayload = payload as PositionsResponse;
+      writeCachedRecord(cacheKey, positionsPayload);
+      const currentPosition = positionsPayload.rows.find(
         (row) => row.type === type && row.mint === mint
       );
 
       setPosition(currentPosition ?? null);
     } catch {
-      setPosition(null);
+      const cached = readCachedRecord<PositionsResponse>(cacheKey);
+      const currentPosition = cached?.payload.rows.find(
+        (row) => row.type === type && row.mint === mint
+      );
+
+      setPosition(currentPosition ?? null);
     }
   }, [mint, type]);
 
   useEffect(() => {
     void loadPosition();
   }, [loadPosition]);
+
+  const refreshData = useCallback(() => {
+    void loadPool();
+    void loadPosition();
+  }, [loadPool, loadPosition]);
+
+  useEffect(() => {
+    const interval = window.setInterval(refreshData, GMTRADE_CACHE_REFRESH_MS);
+
+    return () => window.clearInterval(interval);
+  }, [refreshData]);
 
   const entryMarker = useMemo<EntryMarker | null>(() => {
     if (!position?.entry_timestamp || position.entry_price_usd === null) return null;
@@ -1033,7 +1098,7 @@ export default function GMTradePoolDetailPage() {
 
           <button
             type="button"
-            onClick={() => void loadPool()}
+            onClick={refreshData}
             disabled={loading}
             className="inline-flex min-h-11 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -1041,20 +1106,32 @@ export default function GMTradePoolDetailPage() {
           </button>
         </section>
 
+        {cacheNotice && (
+          <section className="mt-8 rounded-lg border border-amber-400/20 bg-amber-400/10 p-5 text-sm text-amber-100">
+            {cacheNotice}
+          </section>
+        )}
+
         {error && (
           <section className="mt-8 rounded-lg border border-red-500/20 bg-red-500/10 p-5 text-sm text-red-100">
             {error}
           </section>
         )}
 
-        {loading && (
+        {loading && !data && (
           <section className="mt-10 flex items-center justify-center py-20">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
           </section>
         )}
 
-        {!loading && data && (
+        {data && (
           <>
+            {poolCacheInfo?.stale && (
+              <section className="mt-4 text-sm text-zinc-500">
+                Cached {formatTimestamp(poolCacheInfo.cachedAt)}
+                {loading ? " · refreshing" : ""}
+              </section>
+            )}
             <section className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-lg border border-white/10 bg-zinc-950/80 p-5">
                 <p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
