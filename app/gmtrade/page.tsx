@@ -477,37 +477,6 @@ export default function GMTradePage() {
     [requestSort, sortDirectionFor]
   );
 
-  const summaryItems = useMemo(() => {
-    if (!data) return [];
-
-    return [
-      {
-        label: "Pools",
-        value: String(data.summary.pool_count),
-        subvalue: `${data.summary.gm_count} GM / ${data.summary.glv_count} GLV`,
-        tone: "text-white",
-      },
-      {
-        label: "Liquidity",
-        value: formatUsd(data.summary.total_liquidity_usd),
-        subvalue: "Supply × current price",
-        tone: "text-white",
-      },
-      {
-        label: "Weighted 7D",
-        value: formatPercent(data.summary.weighted_returns["7d"]),
-        subvalue: `Best ${formatPercent(data.summary.best_returns["7d"])}`,
-        tone: returnTone(data.summary.weighted_returns["7d"]),
-      },
-      {
-        label: "Weighted 30D",
-        value: formatPercent(data.summary.weighted_returns["30d"]),
-        subvalue: `Best ${formatPercent(data.summary.best_returns["30d"])}`,
-        tone: returnTone(data.summary.weighted_returns["30d"]),
-      },
-    ];
-  }, [data]);
-
   return (
     <div className="min-h-screen bg-black text-gray-100">
       <Header />
@@ -594,26 +563,7 @@ export default function GMTradePage() {
         </section>
 
         {data && (
-          <section className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {summaryItems.map((item) => (
-              <div
-                key={item.label}
-                className="rounded-lg border border-white/10 bg-zinc-950/80 p-5"
-              >
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">
-                  {item.label}
-                </p>
-                <p className={`mt-3 text-2xl font-semibold ${item.tone}`}>
-                  {item.value}
-                </p>
-                <p className="mt-2 text-xs text-zinc-500">{item.subvalue}</p>
-              </div>
-            ))}
-          </section>
-        )}
-
-        {data && (
-          <section className="mt-4 flex flex-col gap-2 border-b border-white/10 pb-5 text-sm text-zinc-400 md:flex-row md:items-center md:justify-between">
+          <section className="mt-8 flex flex-col gap-2 border-b border-white/10 pb-5 text-sm text-zinc-400 md:flex-row md:items-center md:justify-between">
             <span>
               Showing <span className="text-zinc-200">{filteredRows.length}</span>{" "}
               of <span className="text-zinc-200">{data.rows.length}</span> pools
