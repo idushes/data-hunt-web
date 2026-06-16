@@ -46,11 +46,12 @@ type PositionRow = {
   balance: number;
   price_usd: number;
   value_usd: number;
-  apy_percent: number | null;
-  pnl_apy_percent: number | null;
-  total_apy_percent: number | null;
-  estimated_daily_usd: number | null;
-  estimated_yearly_usd: number | null;
+  entry_timestamp: string;
+  entry_price_usd: number | null;
+  cost_basis_usd: number | null;
+  pnl_usd: number | null;
+  return_percent: number | null;
+  annualized_return_percent: number | null;
   updated_at: string;
 };
 
@@ -74,10 +75,9 @@ type PositionsResponse = {
   rows: PositionRow[];
   summary: {
     total_value_usd: number;
-    value_with_apy_usd: number;
-    weighted_apy_percent: number | null;
-    estimated_daily_usd: number;
-    estimated_yearly_usd: number;
+    cost_basis_usd: number;
+    pnl_usd: number;
+    weighted_annualized_return_percent: number | null;
     position_count: number;
     updated_at: string;
   };
@@ -193,7 +193,9 @@ function sortValue(
   if (key === "favorite") return favorites.has(favoriteKeyForRow(row)) ? 1 : 0;
   if (key === "pool") return row.name.toLowerCase();
   if (key === "position_value") return position?.value_usd ?? null;
-  if (key === "position_apy") return position?.total_apy_percent ?? null;
+  if (key === "position_apy") {
+    return position?.annualized_return_percent ?? null;
+  }
   if (key === "supply") return row.supply;
   if (isPeriodSortKey(key)) return row.period_returns[key];
   return "";
@@ -897,15 +899,21 @@ export default function GMTradePage() {
                         <td className="px-4 py-4 font-mono">
                           {position ? (
                             <div>
-                              <p className={returnTone(position.total_apy_percent)}>
-                                {formatPercent(position.total_apy_percent)}
+                              <p
+                                className={returnTone(
+                                  position.annualized_return_percent
+                                )}
+                              >
+                                {formatPercent(
+                                  position.annualized_return_percent
+                                )}
                               </p>
                               <p
                                 className={`mt-1 text-xs ${returnTone(
-                                  position.estimated_yearly_usd
+                                  position.pnl_usd
                                 )}`}
                               >
-                                {formatSignedUsd(position.estimated_yearly_usd)}
+                                {formatSignedUsd(position.pnl_usd)}
                               </p>
                             </div>
                           ) : (

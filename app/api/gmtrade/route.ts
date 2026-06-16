@@ -40,8 +40,6 @@ type GmInfo = {
   gmPriceNow: string;
   gmPrice7d: string;
   supply: string;
-  apy: string;
-  pnlApy: string;
   timestamp: string;
 };
 
@@ -50,7 +48,6 @@ type GlvInfo = {
   glvPriceNow: string;
   glvPrice7d: string;
   supply: string;
-  apy: string;
   timestamp: string;
 };
 
@@ -82,15 +79,22 @@ type GmTradeRow = {
   balance: number;
   price_usd: number;
   value_usd: number;
-  apy_percent: number | null;
-  pnl_apy_percent: number | null;
-  total_apy_percent: number | null;
-  estimated_daily_usd: number | null;
-  estimated_yearly_usd: number | null;
+  entry_timestamp: string;
+  entry_price_usd: number | null;
+  cost_basis_usd: number | null;
+  pnl_usd: number | null;
+  return_percent: number | null;
+  annualized_return_percent: number | null;
   long_token_mint: string;
   short_token_mint: string;
   index_token_mint: string;
   updated_at: string;
+};
+
+type PositionEntry = {
+  type: PoolType;
+  mint: string;
+  timestamp: string;
 };
 
 class SourceError extends Error {
@@ -157,41 +161,6 @@ function supplyFromRaw(raw: string) {
 function roundTo(value: number, digits: number) {
   if (!Number.isFinite(value)) return 0;
   return Number(value.toFixed(digits));
-}
-
-function normalizeApyPercent(raw: string): number | null {
-  if (!raw) return null;
-
-  const value = Number(raw);
-  if (!Number.isFinite(value)) return null;
-
-  const absolute = Math.abs(value);
-  if (absolute === 0) return 0;
-
-  // GMX protocol APY values are commonly emitted as fixed-point fractions.
-  if (absolute >= 1e20) {
-    return value / 1e28;
-  }
-
-  if (absolute <= 1) {
-    return value * 100;
-  }
-
-  return value;
-}
-
-function estimateYearly(valueUsd: number, apyPercent: number | null) {
-  if (apyPercent === null) return null;
-  return valueUsd * (apyPercent / 100);
-}
-
-function estimateDaily(yearlyUsd: number) {
-  return yearlyUsd / 365;
-}
-
-function combineApy(apy: number | null, pnlApy: number | null) {
-  if (apy === null && pnlApy === null) return null;
-  return (apy ?? 0) + (pnlApy ?? 0);
 }
 
 function periodKey(days: PeriodDays): PeriodKey {
@@ -311,6 +280,46 @@ async function fetchGlvUsers(wallet: string): Promise<GlvUser[]> {
   }));
 }
 
+function completedEntry(item: Record<string, unknown>) {
+  const state = stringField(item, "state").toLowerCase();
+  const reason = stringField(item, "reason").toLowerCase();
+  return (!state || state === "completed") && (!reason || reason === "executed");
+}
+
+async function fetchGmPositionEntries(wallet: string): Promise<PositionEntry[]> {
+  const data = await queryGraphQL(
+    `{ depositRemoveds(where:{owner_eq:${quoteGraphQLString(
+      wallet
+    )}}, orderBy:timestamp_ASC, limit:500) { marketToken timestamp state reason } }`
+  );
+
+  return asList(data.depositRemoveds)
+    .filter(completedEntry)
+    .map((item) => ({
+      type: "GM" as const,
+      mint: stringField(item, "marketToken"),
+      timestamp: stringField(item, "timestamp"),
+    }))
+    .filter((item) => item.mint && item.timestamp);
+}
+
+async function fetchGlvPositionEntries(wallet: string): Promise<PositionEntry[]> {
+  const data = await queryGraphQL(
+    `{ glvDepositRemoveds(where:{owner_eq:${quoteGraphQLString(
+      wallet
+    )}}, orderBy:timestamp_ASC, limit:500) { glvToken timestamp state reason } }`
+  );
+
+  return asList(data.glvDepositRemoveds)
+    .filter(completedEntry)
+    .map((item) => ({
+      type: "GLV" as const,
+      mint: stringField(item, "glvToken"),
+      timestamp: stringField(item, "timestamp"),
+    }))
+    .filter((item) => item.mint && item.timestamp);
+}
+
 async function fetchMarketInfos(mints: string[]): Promise<Record<string, MarketInfo>> {
   if (mints.length === 0) return {};
 
@@ -359,7 +368,7 @@ async function fetchGmInfos(mints: string[]): Promise<Record<string, GmInfo>> {
   const data = await queryGraphQL(
     `{ marketGmInfos(where:{id_in:[${quoteGraphQLList(
       mints
-    )}]}) { id gmPriceNow gmPrice7d supply apy pnlApy timestamp } }`
+    )}]}) { id gmPriceNow gmPrice7d supply timestamp } }`
   );
 
   return Object.fromEntries(
@@ -369,8 +378,6 @@ async function fetchGmInfos(mints: string[]): Promise<Record<string, GmInfo>> {
         gmPriceNow: stringField(item, "gmPriceNow"),
         gmPrice7d: stringField(item, "gmPrice7d"),
         supply: stringField(item, "supply"),
-        apy: stringField(item, "apy"),
-        pnlApy: stringField(item, "pnlApy"),
         timestamp: stringField(item, "timestamp"),
       }))
       .filter((item) => item.id)
@@ -380,7 +387,7 @@ async function fetchGmInfos(mints: string[]): Promise<Record<string, GmInfo>> {
 
 async function fetchAllGmInfos(): Promise<Record<string, GmInfo>> {
   const data = await queryGraphQL(
-    "{ marketGmInfos(limit:500) { id gmPriceNow gmPrice7d supply apy pnlApy timestamp } }"
+    "{ marketGmInfos(limit:500) { id gmPriceNow gmPrice7d supply timestamp } }"
   );
 
   return Object.fromEntries(
@@ -390,8 +397,6 @@ async function fetchAllGmInfos(): Promise<Record<string, GmInfo>> {
         gmPriceNow: stringField(item, "gmPriceNow"),
         gmPrice7d: stringField(item, "gmPrice7d"),
         supply: stringField(item, "supply"),
-        apy: stringField(item, "apy"),
-        pnlApy: stringField(item, "pnlApy"),
         timestamp: stringField(item, "timestamp"),
       }))
       .filter((item) => item.id)
@@ -405,7 +410,7 @@ async function fetchGlvInfos(mints: string[]): Promise<Record<string, GlvInfo>> 
   const data = await queryGraphQL(
     `{ glvInfos(where:{id_in:[${quoteGraphQLList(
       mints
-    )}]}) { id glvPriceNow glvPrice7d supply apy timestamp } }`
+    )}]}) { id glvPriceNow glvPrice7d supply timestamp } }`
   );
 
   return Object.fromEntries(
@@ -415,7 +420,6 @@ async function fetchGlvInfos(mints: string[]): Promise<Record<string, GlvInfo>> 
         glvPriceNow: stringField(item, "glvPriceNow"),
         glvPrice7d: stringField(item, "glvPrice7d"),
         supply: stringField(item, "supply"),
-        apy: stringField(item, "apy"),
         timestamp: stringField(item, "timestamp"),
       }))
       .filter((item) => item.id)
@@ -425,7 +429,7 @@ async function fetchGlvInfos(mints: string[]): Promise<Record<string, GlvInfo>> 
 
 async function fetchAllGlvInfos(): Promise<Record<string, GlvInfo>> {
   const data = await queryGraphQL(
-    "{ glvInfos(limit:100) { id glvPriceNow glvPrice7d supply apy timestamp } }"
+    "{ glvInfos(limit:100) { id glvPriceNow glvPrice7d supply timestamp } }"
   );
 
   return Object.fromEntries(
@@ -435,7 +439,6 @@ async function fetchAllGlvInfos(): Promise<Record<string, GlvInfo>> {
         glvPriceNow: stringField(item, "glvPriceNow"),
         glvPrice7d: stringField(item, "glvPrice7d"),
         supply: stringField(item, "supply"),
-        apy: stringField(item, "apy"),
         timestamp: stringField(item, "timestamp"),
       }))
       .filter((item) => item.id)
@@ -788,6 +791,27 @@ function priceAtOrBefore(points: PricePoint[], daysAgo: PeriodDays) {
   return eligible.at(-1)?.price_usd ?? null;
 }
 
+function priceClosestToTimestamp(points: PricePoint[], timestamp: string) {
+  const target = Date.parse(timestamp);
+  if (!Number.isFinite(target)) return null;
+
+  let closest: PricePoint | null = null;
+  let closestDistance = Infinity;
+
+  for (const point of points) {
+    const time = Date.parse(point.timestamp);
+    if (!Number.isFinite(time)) continue;
+
+    const distance = Math.abs(time - target);
+    if (distance < closestDistance) {
+      closest = point;
+      closestDistance = distance;
+    }
+  }
+
+  return closest?.price_usd ?? null;
+}
+
 function returnsFromHistory(currentPrice: number, points: PricePoint[]) {
   const returns = emptyPeriodReturns();
 
@@ -815,6 +839,95 @@ function appendCurrentPoint(
     ...history,
     { timestamp, price_usd: roundTo(currentPrice, 9) },
   ].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
+}
+
+function positionKey(type: PoolType, mint: string) {
+  return `${type}:${mint}`;
+}
+
+function latestEntryMap(entries: PositionEntry[]) {
+  const map = new Map<string, PositionEntry>();
+
+  for (const entry of entries) {
+    const key = positionKey(entry.type, entry.mint);
+    const current = map.get(key);
+    if (!current || Date.parse(entry.timestamp) > Date.parse(current.timestamp)) {
+      map.set(key, entry);
+    }
+  }
+
+  return map;
+}
+
+async function fetchPositionHistories(entries: PositionEntry[]) {
+  const uniqueEntries = Array.from(
+    new Map(entries.map((entry) => [positionKey(entry.type, entry.mint), entry])).values()
+  );
+  const pairs = await Promise.all(
+    uniqueEntries.map(async (entry) => [
+      positionKey(entry.type, entry.mint),
+      await optional(() => fetchDailyHistory(entry.type, entry.mint), [] as PricePoint[]),
+    ] as const)
+  );
+
+  return new Map(pairs);
+}
+
+function annualizedPriceReturn(
+  currentPrice: number,
+  entryPrice: number | null,
+  entryTimestamp: string,
+  currentTimestamp: string
+) {
+  if (!entryPrice || entryPrice <= 0 || currentPrice <= 0) return null;
+
+  const entryTime = Date.parse(entryTimestamp);
+  const currentTime = Date.parse(currentTimestamp);
+  if (!Number.isFinite(entryTime) || !Number.isFinite(currentTime)) return null;
+
+  const days = (currentTime - entryTime) / (24 * 60 * 60 * 1000);
+  if (days <= 0) return null;
+
+  return (currentPrice / entryPrice) ** (365 / days) * 100 - 100;
+}
+
+function buildPositionPerformance(
+  type: PoolType,
+  mint: string,
+  balance: number,
+  currentPrice: number,
+  currentValue: number,
+  currentTimestamp: string,
+  entries: Map<string, PositionEntry>,
+  histories: Map<string, PricePoint[]>
+) {
+  const entry = entries.get(positionKey(type, mint));
+  const history = histories.get(positionKey(type, mint)) ?? [];
+  const historyWithCurrent = appendCurrentPoint(history, currentPrice, currentTimestamp);
+  const entryPrice = entry
+    ? priceClosestToTimestamp(historyWithCurrent, entry.timestamp)
+    : null;
+  const costBasis = entryPrice === null ? null : balance * entryPrice;
+  const pnl = costBasis === null ? null : currentValue - costBasis;
+  const annualizedReturn = entry
+    ? annualizedPriceReturn(
+        currentPrice,
+        entryPrice,
+        entry.timestamp,
+        currentTimestamp
+      )
+    : null;
+
+  return {
+    entry_timestamp: entry?.timestamp ?? "",
+    entry_price_usd: entryPrice === null ? null : roundTo(entryPrice, 9),
+    cost_basis_usd: costBasis === null ? null : roundTo(costBasis, 2),
+    pnl_usd: pnl === null ? null : roundTo(pnl, 2),
+    return_percent:
+      entryPrice === null ? null : percentChange(currentPrice, entryPrice),
+    annualized_return_percent:
+      annualizedReturn === null ? null : roundTo(annualizedReturn, 4),
+  };
 }
 
 async function buildPoolDetailResponse(type: PoolType, mint: string) {
@@ -885,7 +998,9 @@ async function buildPoolDetailResponse(type: PoolType, mint: string) {
 function buildGmRows(
   users: GmUser[],
   markets: Record<string, MarketInfo>,
-  gmInfos: Record<string, GmInfo>
+  gmInfos: Record<string, GmInfo>,
+  entries: Map<string, PositionEntry>,
+  histories: Map<string, PricePoint[]>
 ): GmTradeRow[] {
   return users.map((user) => {
     const mint = user.marketToken;
@@ -894,10 +1009,17 @@ function buildGmRows(
     const balance = decimalFromScale(user.balance, 1e9);
     const priceUsd = decimalFromScale(gmInfo?.gmPriceNow ?? "", 1e11);
     const valueUsd = balance * priceUsd;
-    const apy = normalizeApyPercent(gmInfo?.apy ?? "");
-    const pnlApy = normalizeApyPercent(gmInfo?.pnlApy ?? "");
-    const totalApy = combineApy(apy, pnlApy);
-    const yearlyUsd = estimateYearly(valueUsd, totalApy);
+    const updatedAt = latestTimestamp(gmInfo?.timestamp ?? "", user.timestamp);
+    const performance = buildPositionPerformance(
+      "GM",
+      mint,
+      balance,
+      priceUsd,
+      valueUsd,
+      updatedAt,
+      entries,
+      histories
+    );
 
     return {
       type: "GM",
@@ -906,23 +1028,20 @@ function buildGmRows(
       balance: roundTo(balance, 9),
       price_usd: roundTo(priceUsd, 9),
       value_usd: roundTo(valueUsd, 2),
-      apy_percent: apy === null ? null : roundTo(apy, 4),
-      pnl_apy_percent: pnlApy === null ? null : roundTo(pnlApy, 4),
-      total_apy_percent: totalApy === null ? null : roundTo(totalApy, 4),
-      estimated_daily_usd:
-        yearlyUsd === null ? null : roundTo(estimateDaily(yearlyUsd), 2),
-      estimated_yearly_usd: yearlyUsd === null ? null : roundTo(yearlyUsd, 2),
+      ...performance,
       long_token_mint: market?.longTokenMint ?? "",
       short_token_mint: market?.shortTokenMint ?? "",
       index_token_mint: market?.indexTokenMint ?? "",
-      updated_at: latestTimestamp(gmInfo?.timestamp ?? "", user.timestamp),
+      updated_at: updatedAt,
     };
   });
 }
 
 function buildGlvRows(
   users: GlvUser[],
-  glvInfos: Record<string, GlvInfo>
+  glvInfos: Record<string, GlvInfo>,
+  entries: Map<string, PositionEntry>,
+  histories: Map<string, PricePoint[]>
 ): GmTradeRow[] {
   return users.map((user) => {
     const mint = user.glvToken;
@@ -930,8 +1049,17 @@ function buildGlvRows(
     const balance = decimalFromScale(user.balance, 1e9);
     const priceUsd = decimalFromScale(glvInfo?.glvPriceNow ?? "", 1e11);
     const valueUsd = balance * priceUsd;
-    const apy = normalizeApyPercent(glvInfo?.apy ?? "");
-    const yearlyUsd = estimateYearly(valueUsd, apy);
+    const updatedAt = latestTimestamp(glvInfo?.timestamp ?? "", user.timestamp);
+    const performance = buildPositionPerformance(
+      "GLV",
+      mint,
+      balance,
+      priceUsd,
+      valueUsd,
+      updatedAt,
+      entries,
+      histories
+    );
 
     return {
       type: "GLV",
@@ -940,42 +1068,50 @@ function buildGlvRows(
       balance: roundTo(balance, 9),
       price_usd: roundTo(priceUsd, 9),
       value_usd: roundTo(valueUsd, 2),
-      apy_percent: apy === null ? null : roundTo(apy, 4),
-      pnl_apy_percent: null,
-      total_apy_percent: apy === null ? null : roundTo(apy, 4),
-      estimated_daily_usd:
-        yearlyUsd === null ? null : roundTo(estimateDaily(yearlyUsd), 2),
-      estimated_yearly_usd: yearlyUsd === null ? null : roundTo(yearlyUsd, 2),
+      ...performance,
       long_token_mint: "",
       short_token_mint: "",
       index_token_mint: "",
-      updated_at: latestTimestamp(glvInfo?.timestamp ?? "", user.timestamp),
+      updated_at: updatedAt,
     };
   });
 }
 
 function buildSummary(rows: GmTradeRow[]) {
   const totalValueUsd = rows.reduce((sum, row) => sum + row.value_usd, 0);
-  const rowsWithApy = rows.filter((row) => row.total_apy_percent !== null);
-  const valueWithApy = rowsWithApy.reduce((sum, row) => sum + row.value_usd, 0);
-  const estimatedYearlyUsd = rowsWithApy.reduce(
-    (sum, row) => sum + (row.estimated_yearly_usd ?? 0),
+  const rowsWithCostBasis = rows.filter((row) => row.cost_basis_usd !== null);
+  const costBasisUsd = rowsWithCostBasis.reduce(
+    (sum, row) => sum + (row.cost_basis_usd ?? 0),
     0
   );
-  const weightedApy =
-    valueWithApy > 0
-      ? rowsWithApy.reduce(
-          (sum, row) => sum + row.value_usd * (row.total_apy_percent ?? 0),
+  const pnlUsd = rowsWithCostBasis.reduce(
+    (sum, row) => sum + (row.pnl_usd ?? 0),
+    0
+  );
+  const rowsWithAnnualizedReturn = rows.filter(
+    (row) => row.annualized_return_percent !== null
+  );
+  const valueWithAnnualizedReturn = rowsWithAnnualizedReturn.reduce(
+    (sum, row) => sum + row.value_usd,
+    0
+  );
+  const weightedAnnualizedReturn =
+    valueWithAnnualizedReturn > 0
+      ? rowsWithAnnualizedReturn.reduce(
+          (sum, row) =>
+            sum + row.value_usd * (row.annualized_return_percent ?? 0),
           0
-        ) / valueWithApy
+        ) / valueWithAnnualizedReturn
       : null;
 
   return {
     total_value_usd: roundTo(totalValueUsd, 2),
-    value_with_apy_usd: roundTo(valueWithApy, 2),
-    weighted_apy_percent: weightedApy === null ? null : roundTo(weightedApy, 4),
-    estimated_daily_usd: roundTo(estimatedYearlyUsd / 365, 2),
-    estimated_yearly_usd: roundTo(estimatedYearlyUsd, 2),
+    cost_basis_usd: roundTo(costBasisUsd, 2),
+    pnl_usd: roundTo(pnlUsd, 2),
+    weighted_annualized_return_percent:
+      weightedAnnualizedReturn === null
+        ? null
+        : roundTo(weightedAnnualizedReturn, 4),
     position_count: rows.length,
     updated_at:
       rows
@@ -1025,15 +1161,26 @@ export async function GET(request: NextRequest) {
     const gmMints = unique(gmUsers.map((user) => user.marketToken));
     const glvMints = unique(glvUsers.map((user) => user.glvToken));
 
-    const [markets, gmInfos, glvInfos] = await Promise.all([
+    const [markets, gmInfos, glvInfos, gmEntriesRaw, glvEntriesRaw] = await Promise.all([
       fetchMarketInfos(gmMints),
       fetchGmInfos(gmMints),
       fetchGlvInfos(glvMints),
+      optional(() => fetchGmPositionEntries(wallet), [] as PositionEntry[]),
+      optional(() => fetchGlvPositionEntries(wallet), [] as PositionEntry[]),
     ]);
+    const currentPositionKeys = new Set([
+      ...gmMints.map((mint) => positionKey("GM", mint)),
+      ...glvMints.map((mint) => positionKey("GLV", mint)),
+    ]);
+    const positionEntries = [...gmEntriesRaw, ...glvEntriesRaw].filter((entry) =>
+      currentPositionKeys.has(positionKey(entry.type, entry.mint))
+    );
+    const entries = latestEntryMap(positionEntries);
+    const histories = await fetchPositionHistories(Array.from(entries.values()));
 
     const rows = [
-      ...buildGmRows(gmUsers, markets, gmInfos),
-      ...buildGlvRows(glvUsers, glvInfos),
+      ...buildGmRows(gmUsers, markets, gmInfos, entries, histories),
+      ...buildGlvRows(glvUsers, glvInfos, entries, histories),
     ].sort((a, b) => b.value_usd - a.value_usd);
 
     return NextResponse.json({
