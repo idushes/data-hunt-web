@@ -62,8 +62,7 @@ function formatPrice(value: number) {
 function formatPercent(value: number | null) {
   if (value === null || !Number.isFinite(value)) return "-";
   return `${value.toLocaleString("en-US", {
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 2,
+    maximumFractionDigits: 0,
   })}%`;
 }
 
