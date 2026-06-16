@@ -45,6 +45,7 @@ type ApiError = {
 
 const PERIODS: PeriodKey[] = ["1d", "7d", "30d", "90d", "1y"];
 const FAVORITES_STORAGE_KEY = "gmtrade:favorites:v1";
+const GMTRADE_APP_URL = "https://gmtrade.xyz";
 
 function shortAddress(value: string) {
   if (!value) return "";
@@ -117,6 +118,12 @@ function favoriteKey(type: PoolType, mint: string) {
 
 function favoriteKeyForRow(row: PoolRow) {
   return favoriteKey(row.type, row.mint);
+}
+
+function gmTradePoolUrl(row: PoolRow) {
+  return `${GMTRADE_APP_URL}/pools/poolDetail/${row.type}/${encodeURIComponent(
+    row.mint
+  )}`;
 }
 
 function storedFavorites() {
@@ -470,7 +477,14 @@ export default function GMTradePage() {
                         </button>
                       </td>
                       <td className="px-4 py-4">
-                        <div className="flex min-w-0 items-center gap-3">
+                        <a
+                          href={gmTradePoolUrl(row)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`Open ${row.name} on GMTrade`}
+                          className="group/pool flex min-w-0 items-center gap-3 rounded-md outline-none transition-colors hover:text-emerald-200 focus-visible:ring-2 focus-visible:ring-emerald-400/70"
+                          title="Open pool on GMTrade"
+                        >
                           <span
                             className={`rounded border px-2 py-1 text-xs font-semibold ${poolTypeTone(
                               row.type
@@ -479,14 +493,14 @@ export default function GMTradePage() {
                             {row.type}
                           </span>
                           <div className="min-w-0">
-                            <p className="max-w-[320px] truncate font-medium text-white">
+                            <p className="max-w-[320px] truncate font-medium text-white transition-colors group-hover/pool:text-emerald-100">
                               {row.name}
                             </p>
-                            <p className="font-mono text-xs text-zinc-500">
+                            <p className="font-mono text-xs text-zinc-500 transition-colors group-hover/pool:text-zinc-300">
                               {shortAddress(row.mint)}
                             </p>
                           </div>
-                        </div>
+                        </a>
                       </td>
                       <td className="px-4 py-4 font-mono text-zinc-200">
                         {formatPrice(row.price_usd)}
