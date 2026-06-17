@@ -94,7 +94,9 @@ type GmTradeRow = {
 type PositionEntry = {
   type: PoolType;
   mint: string;
+  id: string;
   timestamp: string;
+  entryPriceUsd: number | null;
 };
 
 class SourceError extends Error {
@@ -286,38 +288,175 @@ function completedEntry(item: Record<string, unknown>) {
   return (!state || state === "completed") && (!reason || reason === "executed");
 }
 
+function eventGroupKey(id: string) {
+  const parts = id.split("-");
+  return parts.length >= 3 ? parts.slice(0, 3).join("-") : "";
+}
+
+function eventMatchKey(
+  type: PoolType,
+  mint: string,
+  timestamp: string,
+  id: string
+) {
+  const group = eventGroupKey(id);
+  return group ? `${type}:${mint}:${timestamp}:${group}` : "";
+}
+
+function timestampMatchKey(type: PoolType, mint: string, timestamp: string) {
+  return `${type}:${mint}:${timestamp}`;
+}
+
+function positiveRatio(numerator: number, denominator: number) {
+  if (numerator <= 0 || denominator <= 0) return null;
+  return numerator / denominator;
+}
+
+function gmDepositEntryPrice(item: Record<string, unknown>) {
+  const minted = decimalFromScale(stringField(item, "reportMinted"), 1e9);
+  const longAmount = decimalFromScale(
+    stringField(item, "reportParamsLongTokenAmount"),
+    1e6
+  );
+  const shortAmount = decimalFromScale(
+    stringField(item, "reportParamsShortTokenAmount"),
+    1e6
+  );
+
+  return positiveRatio(longAmount + shortAmount, minted);
+}
+
+function glvDepositEntryPrice(item: Record<string, unknown>) {
+  const inputValueUsd = decimalFromScale(stringField(item, "inputValue"), 1e20);
+  const outputAmount = decimalFromScale(stringField(item, "outputAmount"), 1e9);
+
+  return positiveRatio(inputValueUsd, outputAmount);
+}
+
+async function fetchGmDepositEntryPrices(entries: PositionEntry[]) {
+  if (entries.length === 0) return new Map<string, number>();
+
+  const timestamps = unique(entries.map((entry) => entry.timestamp));
+  const mints = unique(entries.map((entry) => entry.mint));
+  const data = await queryGraphQL(
+    `{ depositExecuteds(where:{marketToken_in:[${quoteGraphQLList(
+      mints
+    )}], timestamp_in:[${quoteGraphQLList(
+      timestamps
+    )}]}, orderBy:timestamp_ASC, limit:1000) { id marketToken timestamp reportMinted reportParamsLongTokenAmount reportParamsShortTokenAmount } }`
+  );
+  const byEvent = new Map<string, number>();
+  const byTimestamp = new Map<string, number>();
+
+  for (const item of asList(data.depositExecuteds)) {
+    const mint = stringField(item, "marketToken");
+    const timestamp = stringField(item, "timestamp");
+    const price = gmDepositEntryPrice(item);
+    if (!mint || !timestamp || price === null) continue;
+
+    const timestampKey = timestampMatchKey("GM", mint, timestamp);
+    if (!byTimestamp.has(timestampKey)) byTimestamp.set(timestampKey, price);
+
+    const eventKey = eventMatchKey("GM", mint, timestamp, stringField(item, "id"));
+    if (eventKey) byEvent.set(eventKey, price);
+  }
+
+  return new Map(
+    entries.map((entry) => [
+      positionKey(entry.type, entry.mint),
+      byEvent.get(eventMatchKey(entry.type, entry.mint, entry.timestamp, entry.id)) ??
+        byTimestamp.get(timestampMatchKey(entry.type, entry.mint, entry.timestamp)) ??
+        null,
+    ])
+  );
+}
+
+async function fetchGlvDepositEntryPrices(entries: PositionEntry[]) {
+  if (entries.length === 0) return new Map<string, number>();
+
+  const timestamps = unique(entries.map((entry) => entry.timestamp));
+  const mints = unique(entries.map((entry) => entry.mint));
+  const data = await queryGraphQL(
+    `{ glvPricings(where:{glvToken_in:[${quoteGraphQLList(
+      mints
+    )}], timestamp_in:[${quoteGraphQLList(
+      timestamps
+    )}], kind_eq:"Deposit"}, orderBy:timestamp_ASC, limit:1000) { id glvToken timestamp inputValue outputAmount kind } }`
+  );
+  const byEvent = new Map<string, number>();
+  const byTimestamp = new Map<string, number>();
+
+  for (const item of asList(data.glvPricings)) {
+    const mint = stringField(item, "glvToken");
+    const timestamp = stringField(item, "timestamp");
+    const price = glvDepositEntryPrice(item);
+    if (!mint || !timestamp || price === null) continue;
+
+    const timestampKey = timestampMatchKey("GLV", mint, timestamp);
+    if (!byTimestamp.has(timestampKey)) byTimestamp.set(timestampKey, price);
+
+    const eventKey = eventMatchKey("GLV", mint, timestamp, stringField(item, "id"));
+    if (eventKey) byEvent.set(eventKey, price);
+  }
+
+  return new Map(
+    entries.map((entry) => [
+      positionKey(entry.type, entry.mint),
+      byEvent.get(eventMatchKey(entry.type, entry.mint, entry.timestamp, entry.id)) ??
+        byTimestamp.get(timestampMatchKey(entry.type, entry.mint, entry.timestamp)) ??
+        null,
+    ])
+  );
+}
+
 async function fetchGmPositionEntries(wallet: string): Promise<PositionEntry[]> {
   const data = await queryGraphQL(
     `{ depositRemoveds(where:{owner_eq:${quoteGraphQLString(
       wallet
-    )}}, orderBy:timestamp_ASC, limit:500) { marketToken timestamp state reason } }`
+    )}}, orderBy:timestamp_ASC, limit:500) { id marketToken timestamp state reason } }`
   );
 
-  return asList(data.depositRemoveds)
+  const entries = asList(data.depositRemoveds)
     .filter(completedEntry)
     .map((item) => ({
       type: "GM" as const,
+      id: stringField(item, "id"),
       mint: stringField(item, "marketToken"),
       timestamp: stringField(item, "timestamp"),
+      entryPriceUsd: null,
     }))
     .filter((item) => item.mint && item.timestamp);
+  const prices = await fetchGmDepositEntryPrices(entries);
+
+  return entries.map((entry) => ({
+    ...entry,
+    entryPriceUsd: prices.get(positionKey(entry.type, entry.mint)) ?? null,
+  }));
 }
 
 async function fetchGlvPositionEntries(wallet: string): Promise<PositionEntry[]> {
   const data = await queryGraphQL(
     `{ glvDepositRemoveds(where:{owner_eq:${quoteGraphQLString(
       wallet
-    )}}, orderBy:timestamp_ASC, limit:500) { glvToken timestamp state reason } }`
+    )}}, orderBy:timestamp_ASC, limit:500) { id glvToken timestamp state reason } }`
   );
 
-  return asList(data.glvDepositRemoveds)
+  const entries = asList(data.glvDepositRemoveds)
     .filter(completedEntry)
     .map((item) => ({
       type: "GLV" as const,
+      id: stringField(item, "id"),
       mint: stringField(item, "glvToken"),
       timestamp: stringField(item, "timestamp"),
+      entryPriceUsd: null,
     }))
     .filter((item) => item.mint && item.timestamp);
+  const prices = await fetchGlvDepositEntryPrices(entries);
+
+  return entries.map((entry) => ({
+    ...entry,
+    entryPriceUsd: prices.get(positionKey(entry.type, entry.mint)) ?? null,
+  }));
 }
 
 async function fetchMarketInfos(mints: string[]): Promise<Record<string, MarketInfo>> {
@@ -904,9 +1043,10 @@ function buildPositionPerformance(
   const entry = entries.get(positionKey(type, mint));
   const history = histories.get(positionKey(type, mint)) ?? [];
   const historyWithCurrent = appendCurrentPoint(history, currentPrice, currentTimestamp);
-  const entryPrice = entry
+  const fallbackEntryPrice = entry
     ? priceClosestToTimestamp(historyWithCurrent, entry.timestamp)
     : null;
+  const entryPrice = entry?.entryPriceUsd ?? fallbackEntryPrice;
   const costBasis = entryPrice === null ? null : balance * entryPrice;
   const pnl = costBasis === null ? null : currentValue - costBasis;
   const annualizedReturn = entry

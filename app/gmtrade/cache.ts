@@ -12,7 +12,7 @@ export const GMTRADE_CACHE_REFRESH_MS = 60 * 60 * 1000;
 export const GMTRADE_POOLS_CACHE_KEY = "gmtrade:pools-cache:v1";
 
 export function gmTradePositionsCacheKey(wallet: string) {
-  return `gmtrade:positions-cache:v1:${encodeURIComponent(wallet.trim())}`;
+  return `gmtrade:positions-cache:v2:${encodeURIComponent(wallet.trim())}`;
 }
 
 export function gmTradePoolDetailCacheKey(type: string, mint: string) {
