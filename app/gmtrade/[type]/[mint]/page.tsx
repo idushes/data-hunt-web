@@ -23,8 +23,8 @@ import {
 } from "@/app/gmtrade/cache";
 
 type PoolType = "GM" | "GLV";
-type PeriodKey = "1d" | "7d" | "30d" | "90d" | "1y";
-type ChartRangeKey = "7d" | "30d" | "90d" | "1y" | "all" | "custom";
+type PeriodKey = "1d" | "7d" | "30d" | "90d" | "180d" | "1y";
+type ChartRangeKey = "7d" | "30d" | "90d" | "180d" | "1y" | "all" | "custom";
 type ChartScaleMode = "price" | "change";
 
 type PricePoint = {
@@ -68,11 +68,12 @@ type ApiError = {
   error: string;
 };
 
-const PERIODS: PeriodKey[] = ["1d", "7d", "30d", "90d", "1y"];
+const PERIODS: PeriodKey[] = ["1d", "7d", "30d", "90d", "180d", "1y"];
 const CHART_RANGES: { key: Exclude<ChartRangeKey, "custom">; label: string; days: number | null }[] = [
   { key: "7d", label: "7D", days: 7 },
   { key: "30d", label: "30D", days: 30 },
   { key: "90d", label: "90D", days: 90 },
+  { key: "180d", label: "180D", days: 180 },
   { key: "1y", label: "1Y", days: 365 },
   { key: "all", label: "All", days: null },
 ];

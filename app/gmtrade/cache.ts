@@ -9,14 +9,14 @@ export type CacheInfo = {
 };
 
 export const GMTRADE_CACHE_REFRESH_MS = 60 * 60 * 1000;
-export const GMTRADE_POOLS_CACHE_KEY = "gmtrade:pools-cache:v1";
+export const GMTRADE_POOLS_CACHE_KEY = "gmtrade:pools-cache:v2";
 
 export function gmTradePositionsCacheKey(wallet: string) {
   return `gmtrade:positions-cache:v2:${encodeURIComponent(wallet.trim())}`;
 }
 
 export function gmTradePoolDetailCacheKey(type: string, mint: string) {
-  return `gmtrade:pool-detail-cache:v1:${encodeURIComponent(
+  return `gmtrade:pool-detail-cache:v2:${encodeURIComponent(
     type.toUpperCase()
   )}:${encodeURIComponent(mint.trim())}`;
 }

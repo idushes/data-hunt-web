@@ -15,7 +15,7 @@ import {
 } from "@/app/gmtrade/cache";
 
 type PoolType = "GM" | "GLV";
-type PeriodKey = "1d" | "7d" | "30d" | "90d" | "1y";
+type PeriodKey = "1d" | "7d" | "30d" | "90d" | "180d" | "1y";
 type PoolTypeFilter = "ALL" | PoolType;
 type SortKey =
   | "favorite"
@@ -97,8 +97,8 @@ type ApiError = {
   error: string;
 };
 
-const PERIODS: PeriodKey[] = ["1d", "7d", "30d", "90d", "1y"];
-const TABLE_PERIODS: PeriodKey[] = ["7d", "30d", "90d", "1y"];
+const PERIODS: PeriodKey[] = ["1d", "7d", "30d", "90d", "180d", "1y"];
+const TABLE_PERIODS: PeriodKey[] = ["7d", "30d", "90d", "180d", "1y"];
 const FAVORITES_STORAGE_KEY = "gmtrade:favorites:v1";
 const SUPPLY_FILTER_STORAGE_KEY = "gmtrade:supply-filter:v1";
 const POSITION_WALLET_STORAGE_KEY = "gmtrade:position-wallet:v1";
