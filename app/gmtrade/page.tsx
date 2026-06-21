@@ -62,6 +62,9 @@ type PositionRow = {
   pnl_usd: number | null;
   return_percent: number | null;
   annualized_return_percent: number | null;
+  long_token_mint: string;
+  short_token_mint: string;
+  index_token_mint: string;
   updated_at: string;
 };
 
@@ -156,6 +159,78 @@ function formatTimestamp(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(parsed));
+}
+
+function exportDateStamp() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function csvValue(value: string | number | null | undefined) {
+  if (value === null || value === undefined) return "";
+
+  const text = String(value);
+  if (!/[",\r\n]/.test(text)) return text;
+
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function buildPositionsCsv(positions: PositionsResponse) {
+  const headers = [
+    "wallet",
+    "type",
+    "name",
+    "mint",
+    "balance",
+    "price_usd",
+    "value_usd",
+    "entry_timestamp",
+    "entry_price_usd",
+    "cost_basis_usd",
+    "pnl_usd",
+    "return_percent",
+    "annualized_return_percent",
+    "long_token_mint",
+    "short_token_mint",
+    "index_token_mint",
+    "updated_at",
+  ];
+  const rows = positions.rows.map((position) => [
+    positions.wallet,
+    position.type,
+    position.name,
+    position.mint,
+    position.balance,
+    position.price_usd,
+    position.value_usd,
+    position.entry_timestamp,
+    position.entry_price_usd,
+    position.cost_basis_usd,
+    position.pnl_usd,
+    position.return_percent,
+    position.annualized_return_percent,
+    position.long_token_mint,
+    position.short_token_mint,
+    position.index_token_mint,
+    position.updated_at,
+  ]);
+
+  return [headers, ...rows]
+    .map((row) => row.map(csvValue).join(","))
+    .join("\r\n");
+}
+
+function downloadCsv(filename: string, content: string) {
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 function formatPositionDays(entryTimestamp: string, updatedTimestamp: string) {
@@ -371,6 +446,22 @@ function ArrowIcon() {
       strokeWidth={1.8}
     >
       <path strokeLinecap="round" strokeLinejoin="round" d="M7 17 17 7M9 7h8v8" />
+    </svg>
+  );
+}
+
+function DownloadIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-4 w-4"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={1.8}
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v11m0 0 4-4m-4 4-4-4" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" />
     </svg>
   );
 }
@@ -720,6 +811,14 @@ export default function GMTradePage() {
     });
   }, []);
 
+  const exportPositionsCsv = useCallback(() => {
+    if (!positions || positions.rows.length === 0) return;
+
+    const wallet = positions.wallet.trim() || positionWallet.trim() || "wallet";
+    const filename = `gmtrade-positions-${wallet}-${exportDateStamp()}.csv`;
+    downloadCsv(filename, buildPositionsCsv(positions));
+  }, [positionWallet, positions]);
+
   const sortDirectionFor = useCallback(
     (key: SortKey) => (sortState?.key === key ? sortState.direction : undefined),
     [sortState]
@@ -855,6 +954,20 @@ export default function GMTradePage() {
             >
               <StarIcon filled={favoritesOnly} />
               <span>Favorites</span>
+            </button>
+            <button
+              type="button"
+              onClick={exportPositionsCsv}
+              disabled={!positions || positions.rows.length === 0}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm font-semibold text-zinc-300 transition-colors hover:bg-zinc-900 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              title={
+                positions?.rows.length
+                  ? "Export loaded wallet positions as CSV"
+                  : "Load wallet positions before exporting CSV"
+              }
+            >
+              <DownloadIcon />
+              <span>Export CSV</span>
             </button>
             <button
               type="button"
