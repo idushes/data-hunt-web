@@ -28,10 +28,12 @@ Guidance for coding agents working in this repository.
 
 - This app is hosted on Vercel under team/project `lisateam/data-hunt-web`.
 - Vercel project dashboard: `https://vercel.com/lisateam/data-hunt-web`.
+- The production frontend domain is `https://crypto.lisacorp.com/`.
+- The production backend API domain is `https://hunt.data.lisacorp.com`.
 - This repository does not currently include a checked-in Dockerfile, `vercel.json`, Kubernetes manifest, or CI deployment workflow.
 - Keep the default Vercel Next.js build flow unless the user explicitly approves platform-specific configuration changes.
 - Validate production readiness with `npm run build` before deploying or before pushing changes expected to deploy.
-- Configure `NEXT_PUBLIC_API_URL` in the Vercel project environment variables so browser-side requests target the deployed backend API instead of the local fallback.
+- Configure `NEXT_PUBLIC_API_URL=https://hunt.data.lisacorp.com` in the Vercel project environment variables so browser-side requests target the deployed backend API instead of the local fallback.
 - For manual Vercel CLI deploys, use `vercel deploy` for preview and `vercel deploy --prod` for production from this repository root after confirming the linked Vercel project.
 - Do not add or change Vercel project settings, domains, deployment protection, environment variable names, or CI automation without explicit user confirmation.
 
