@@ -24,6 +24,15 @@ Guidance for coding agents working in this repository.
 - Build production output with `npm run build`.
 - Run linting with `npm run lint`.
 
+## Deployment
+
+- This repository does not currently include a checked-in Dockerfile, `vercel.json`, Kubernetes manifest, or CI deployment workflow.
+- Validate production readiness with `npm run build` before deploying.
+- Start the production Next.js server with `npm run start`; set `PORT` in the hosting environment when the default port is not appropriate.
+- Configure `NEXT_PUBLIC_API_URL` in the deployment environment so browser-side requests target the deployed backend API instead of the local fallback.
+- If deploying on Vercel or another managed Next.js host, keep the default App Router build flow unless the user explicitly approves platform-specific configuration.
+- Do not add new deployment infrastructure, domains, environment variable names, or hosting assumptions without explicit user confirmation.
+
 ## Coding Rules
 
 - Prefer Server Components by default. Add `'use client'` only for components that need browser APIs, state, effects, or event handlers.
