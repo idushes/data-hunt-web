@@ -314,15 +314,23 @@ export default function AccountPage() {
                 }
             });
 
-            if (response.ok) {
+            const data = await response.json();
+            const failedUpdates = data.results?.filter(
+                (result: { status: string }) => result.status !== 'success'
+            ) ?? [];
+
+            if (response.ok && failedUpdates.length === 0) {
                 setStatus(`Successfully updated ${type}`);
                 setTimeout(() => setStatus(''), 3000);
             } else {
-                const data = await response.json();
-                setStatus(`Failed to update ${type}: ${data.detail || 'Unknown error'}`);
+                const detail = data.detail
+                    || failedUpdates[0]?.error
+                    || 'Unknown error';
+                setStatus(`Failed to update ${type}: ${detail}`);
             }
-        } catch (error: any) {
-            setStatus(`Error updating ${type}: ${error.message}`);
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            setStatus(`Error updating ${type}: ${message}`);
         } finally {
             setLocalLoading(false);
         }

@@ -16,6 +16,7 @@ function HistoryContent() {
     const [accessToken, setAccessToken] = useState<string | null>(null);
     const [hasMore, setHasMore] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [refreshError, setRefreshError] = useState<string | null>(null);
 
     // Params
     const skipParam = searchParams.get('skip');
@@ -91,6 +92,7 @@ function HistoryContent() {
     const handleRefresh = async () => {
         if (!accessToken) return;
         setIsRefreshing(true);
+        setRefreshError(null);
         
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://0.0.0.0:8111';
@@ -103,8 +105,15 @@ function HistoryContent() {
                 }
             });
 
-            if (!updateRes.ok) {
-                console.error('Failed to trigger history update');
+            const updateData = await updateRes.json();
+            const failedUpdates = updateData.results?.filter(
+                (result: { status: string }) => result.status !== 'success'
+            ) ?? [];
+            if (!updateRes.ok || failedUpdates.length > 0) {
+                const detail = updateData.detail
+                    || failedUpdates[0]?.error
+                    || 'DeBank history sync failed';
+                throw new Error(detail);
             }
 
             // Step 2: Enrich historical prices
@@ -115,15 +124,22 @@ function HistoryContent() {
                 }
             });
 
-            if (!enrichRes.ok) {
-                console.error('Failed to enrich prices');
+            const enrichData = await enrichRes.json();
+            if (!enrichRes.ok || enrichData.status === 'partial_error') {
+                const detail = enrichData.detail
+                    || enrichData.errors?.[0]
+                    || 'DeBank price sync failed';
+                throw new Error(detail);
             }
-            
-            // Step 3: Fetch updated history with enriched prices
-            await fetchHistory(true); 
         } catch (error) {
             console.error('Error refreshing history:', error);
-            setIsRefreshing(false);
+            setRefreshError(
+                error instanceof Error ? error.message : 'Failed to refresh history'
+            );
+        } finally {
+            // Fetch any successfully updated transactions even when price
+            // enrichment was only partially successful.
+            await fetchHistory(true);
         }
     };
 
@@ -166,6 +182,12 @@ function HistoryContent() {
                         </select>
                     </div>
                 </div>
+
+                {refreshError && (
+                    <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                        History refresh is incomplete: {refreshError}
+                    </div>
+                )}
 
                 {/* Content */}
                 {loading ? (
