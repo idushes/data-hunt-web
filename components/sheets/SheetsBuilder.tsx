@@ -501,7 +501,7 @@ export default function SheetsBuilder() {
         <div className="absolute right-[6%] top-56 h-80 w-80 rounded-full bg-blue-500/10 blur-[120px]" />
       </div>
 
-      <div className="relative mx-auto max-w-7xl">
+      <div className="relative mx-auto max-w-[1800px]">
         <div className="mb-8 max-w-3xl">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-violet-200">
             Google Sheets helper
@@ -516,89 +516,95 @@ export default function SheetsBuilder() {
           </p>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
-          <section className="h-fit rounded-2xl border border-white/10 bg-white/[0.035] p-5 shadow-2xl shadow-black/30 lg:sticky lg:top-24">
+        <div className="space-y-6">
+          <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 shadow-2xl shadow-black/30 sm:p-6">
             <div className="mb-5 flex items-center justify-between">
               <h2 className="font-medium text-white">1. Источник данных</h2>
               <span className="text-xs text-zinc-500">{sheetSources.length} CSV</span>
             </div>
 
-            <label className="block text-sm text-zinc-300">
-              Таблица
-              <select
-                value={source.id}
-                onChange={(event) => changeSource(event.target.value)}
-                className={parameterInputClass()}
-              >
-                {groups.map((group) => (
-                  <optgroup key={group} label={group}>
-                    {sheetSources
-                      .filter((candidate) => candidate.group === group)
-                      .map((candidate) => (
-                        <option key={candidate.id} value={candidate.id}>
-                          {candidate.name}
-                        </option>
-                      ))}
-                  </optgroup>
-                ))}
-              </select>
-            </label>
+            <div className="grid gap-6 lg:grid-cols-[minmax(260px,360px)_minmax(0,1fr)]">
+              <div>
+                <label className="block text-sm text-zinc-300">
+                  Таблица
+                  <select
+                    value={source.id}
+                    onChange={(event) => changeSource(event.target.value)}
+                    className={parameterInputClass()}
+                  >
+                    {groups.map((group) => (
+                      <optgroup key={group} label={group}>
+                        {sheetSources
+                          .filter((candidate) => candidate.group === group)
+                          .map((candidate) => (
+                            <option key={candidate.id} value={candidate.id}>
+                              {candidate.name}
+                            </option>
+                          ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </label>
 
-            <p className="mt-3 text-sm leading-6 text-zinc-500">
-              {source.description}
-            </p>
+                <p className="mt-3 text-sm leading-6 text-zinc-500">
+                  {source.description}
+                </p>
+              </div>
 
-            <div className="my-5 h-px bg-white/10" />
-
-            <div className="space-y-4">
-              {source.parameters.map((parameter) => {
-                const kind = addressKind(parameter);
-                return (
-                  <div key={parameter.key}>
-                    <ParameterField
-                      parameter={parameter}
-                      value={values[parameter.key] ?? ""}
-                      onChange={(value) => updateValue(parameter.key, value)}
-                    />
-                    {kind ? (
-                      <SavedAddressPicker
-                        kind={kind}
+              <div className="grid content-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {source.parameters.map((parameter) => {
+                  const kind = addressKind(parameter);
+                  return (
+                    <div key={parameter.key} className="min-w-0">
+                      <ParameterField
+                        parameter={parameter}
                         value={values[parameter.key] ?? ""}
                         onChange={(value) => updateValue(parameter.key, value)}
-                        onError={setError}
                       />
-                    ) : null}
-                  </div>
-                );
-              })}
+                      {kind ? (
+                        <SavedAddressPicker
+                          kind={kind}
+                          value={values[parameter.key] ?? ""}
+                          onChange={(value) => updateValue(parameter.key, value)}
+                          onError={setError}
+                        />
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
-            {source.usesDataHuntToken ? (
-              <button
-                type="button"
-                onClick={useAccountToken}
-                className="mt-4 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-zinc-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
-              >
-                Подставить токен аккаунта
-              </button>
-            ) : null}
+            <div className="mt-5 flex flex-col gap-4 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
+              <p className="max-w-2xl text-xs leading-5 text-zinc-600">
+                Токены и ключи попадут в URL формулы. Не публикуйте лист с такими
+                формулами и не давайте к нему общий доступ.
+              </p>
 
-            <button
-              type="button"
-              onClick={loadTable}
-              disabled={loading}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-blue-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-950/30 transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
-            >
-              {loading ? (
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              ) : null}
-              {loading ? "Загружаю…" : "Загрузить таблицу"}
-            </button>
+              <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
+                {source.usesDataHuntToken ? (
+                  <button
+                    type="button"
+                    onClick={useAccountToken}
+                    className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
+                  >
+                    Подставить токен аккаунта
+                  </button>
+                ) : null}
 
-            <p className="mt-4 text-xs leading-5 text-zinc-600">
-              Токены и ключи попадут в URL формулы. Не публикуйте лист с такими
-              формулами и не давайте к нему общий доступ.
-            </p>
+                <button
+                  type="button"
+                  onClick={loadTable}
+                  disabled={loading}
+                  className="flex min-w-48 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-950/30 transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
+                >
+                  {loading ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  ) : null}
+                  {loading ? "Загружаю…" : "Загрузить таблицу"}
+                </button>
+              </div>
+            </div>
           </section>
 
           <div className="min-w-0 space-y-6">
@@ -629,7 +635,7 @@ export default function SheetsBuilder() {
               </div>
 
               {rows.length > 0 ? (
-                <div className="max-h-[520px] overflow-auto">
+                <div className="max-h-[640px] overflow-auto">
                   <table className="min-w-full border-separate border-spacing-0 text-left text-xs">
                     <tbody>
                       {rows.map((row, rowIndex) => (
@@ -686,7 +692,7 @@ export default function SheetsBuilder() {
                   </div>
                   <p className="text-sm text-zinc-400">Таблица появится здесь</p>
                   <p className="mt-1 max-w-sm text-xs leading-5 text-zinc-600">
-                    Заполните параметры слева и нажмите «Загрузить таблицу».
+                    Заполните параметры сверху и нажмите «Загрузить таблицу».
                   </p>
                 </div>
               )}
