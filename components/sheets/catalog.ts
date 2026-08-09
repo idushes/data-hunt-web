@@ -151,6 +151,29 @@ export const sheetSources: SheetSource[] = [
     ],
   },
   {
+    id: "stablecoins",
+    name: "USDC / USDT balances",
+    group: "Wallets",
+    description:
+      "Прямые балансы USDC и USDT кошельков в Ethereum и Solana, включая нулевые.",
+    path: "/stablecoins/balances.csv",
+    keyColumn: "balance_id",
+    requiredAny: ["address", "wallet"],
+    parameters: [
+      {
+        ...evmAddress,
+        label: "Ethereum-адрес",
+        required: false,
+        help: "Можно указать только Ethereum, только Solana или оба адреса.",
+      },
+      {
+        ...solanaWallet,
+        required: false,
+        help: "Можно указать только Ethereum, только Solana или оба адреса.",
+      },
+    ],
+  },
+  {
     id: "debt",
     name: "DataHunt debt",
     group: "DataHunt account",
