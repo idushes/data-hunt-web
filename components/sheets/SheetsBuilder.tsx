@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import {
   initialParameterValues,
   sheetSources,
@@ -18,6 +18,96 @@ type SelectedCell = {
 };
 
 type CopyTarget = "formula" | "value" | "url";
+
+type AddressKind = "evm" | "solana";
+
+type SavedAddress = {
+  id: string;
+  kind: AddressKind;
+  label: string;
+  value: string;
+};
+
+const SAVED_ADDRESSES_KEY = "datahunt:sheets:saved-addresses:v1";
+const SAVED_ADDRESSES_EVENT = "datahunt:sheets:saved-addresses-changed";
+const EMPTY_SAVED_ADDRESSES = "[]";
+
+function savedAddressesSnapshot() {
+  return localStorage.getItem(SAVED_ADDRESSES_KEY) ?? EMPTY_SAVED_ADDRESSES;
+}
+
+function serverSavedAddressesSnapshot() {
+  return EMPTY_SAVED_ADDRESSES;
+}
+
+function subscribeToSavedAddresses(onStoreChange: () => void) {
+  function handleStorage(event: StorageEvent) {
+    if (event.key === SAVED_ADDRESSES_KEY) onStoreChange();
+  }
+
+  window.addEventListener("storage", handleStorage);
+  window.addEventListener(SAVED_ADDRESSES_EVENT, onStoreChange);
+  return () => {
+    window.removeEventListener("storage", handleStorage);
+    window.removeEventListener(SAVED_ADDRESSES_EVENT, onStoreChange);
+  };
+}
+
+function parseSavedAddresses(content: string): SavedAddress[] {
+  try {
+    const parsed: unknown = JSON.parse(content);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.filter((item): item is SavedAddress => {
+      if (!item || typeof item !== "object") return false;
+      const candidate = item as Partial<SavedAddress>;
+      return (
+        typeof candidate.id === "string" &&
+        (candidate.kind === "evm" || candidate.kind === "solana") &&
+        typeof candidate.label === "string" &&
+        typeof candidate.value === "string"
+      );
+    });
+  } catch {
+    return [];
+  }
+}
+
+function useSavedAddresses() {
+  const snapshot = useSyncExternalStore(
+    subscribeToSavedAddresses,
+    savedAddressesSnapshot,
+    serverSavedAddressesSnapshot
+  );
+  return useMemo(() => parseSavedAddresses(snapshot), [snapshot]);
+}
+
+function storeSavedAddresses(addresses: SavedAddress[]) {
+  localStorage.setItem(SAVED_ADDRESSES_KEY, JSON.stringify(addresses));
+  window.dispatchEvent(new Event(SAVED_ADDRESSES_EVENT));
+}
+
+function addressKind(parameter: SheetParameter): AddressKind | null {
+  if (parameter.key === "wallet") return "solana";
+  if (parameter.key === "address") return "evm";
+  return null;
+}
+
+function normalizedAddress(value: string, kind: AddressKind) {
+  const trimmed = value.trim();
+  return kind === "evm" ? trimmed.toLowerCase() : trimmed;
+}
+
+function validAddress(value: string, kind: AddressKind) {
+  const trimmed = value.trim();
+  if (kind === "evm") return /^0x[0-9a-fA-F]{40}$/.test(trimmed);
+  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(trimmed);
+}
+
+function shortAddress(value: string) {
+  if (value.length <= 16) return value;
+  return `${value.slice(0, 7)}…${value.slice(-6)}`;
+}
 
 function parameterInputClass() {
   return "mt-2 w-full rounded-xl border border-white/10 bg-black/50 px-3.5 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-violet-400/60 focus:ring-2 focus:ring-violet-400/10";
@@ -111,6 +201,130 @@ function ParameterField({
         </span>
       ) : null}
     </label>
+  );
+}
+
+function SavedAddressPicker({
+  kind,
+  value,
+  onChange,
+  onError,
+}: {
+  kind: AddressKind;
+  value: string;
+  onChange: (value: string) => void;
+  onError: (message: string) => void;
+}) {
+  const allAddresses = useSavedAddresses();
+  const addresses = allAddresses.filter((address) => address.kind === kind);
+  const normalizedValue = normalizedAddress(value, kind);
+  const selectedAddress = addresses.find(
+    (address) => normalizedAddress(address.value, kind) === normalizedValue
+  );
+
+  function selectAddress(id: string) {
+    const address = addresses.find((candidate) => candidate.id === id);
+    if (!address) return;
+    onChange(address.value);
+    onError("");
+  }
+
+  function saveAddress() {
+    const trimmed = value.trim();
+    if (!validAddress(trimmed, kind)) {
+      onError(
+        kind === "evm"
+          ? "Введите корректный EVM-адрес перед сохранением."
+          : "Введите корректный Solana-адрес перед сохранением."
+      );
+      return;
+    }
+
+    const existing = allAddresses.find(
+      (address) =>
+        address.kind === kind &&
+        normalizedAddress(address.value, kind) === normalizedAddress(trimmed, kind)
+    );
+    const defaultLabel = existing?.label ?? shortAddress(trimmed);
+    const label = window.prompt("Название для адреса", defaultLabel)?.trim();
+    if (label === undefined) return;
+
+    const nextAddress: SavedAddress = {
+      id: existing?.id ?? `${kind}:${normalizedAddress(trimmed, kind)}`,
+      kind,
+      label: label || defaultLabel,
+      value: trimmed,
+    };
+    const nextAddresses = existing
+      ? allAddresses.map((address) =>
+          address.id === existing.id ? nextAddress : address
+        )
+      : [...allAddresses, nextAddress];
+
+    storeSavedAddresses(nextAddresses);
+    onChange(trimmed);
+    onError("");
+  }
+
+  function removeAddress() {
+    if (!selectedAddress) return;
+    const confirmed = window.confirm(
+      `Удалить «${selectedAddress.label}» из сохранённых адресов?`
+    );
+    if (!confirmed) return;
+
+    storeSavedAddresses(
+      allAddresses.filter((address) => address.id !== selectedAddress.id)
+    );
+    onError("");
+  }
+
+  return (
+    <div className="mt-2 rounded-xl border border-white/[0.07] bg-white/[0.025] p-2.5">
+      <div className="flex gap-2">
+        <select
+          aria-label={
+            kind === "evm" ? "Сохранённые EVM-адреса" : "Сохранённые Solana-адреса"
+          }
+          value={selectedAddress?.id ?? ""}
+          onChange={(event) => selectAddress(event.target.value)}
+          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/60 px-3 py-2 text-xs text-zinc-300 outline-none transition focus:border-violet-400/50"
+        >
+          <option value="">
+            {addresses.length > 0
+              ? "Выбрать сохранённый адрес"
+              : "Сохранённых адресов пока нет"}
+          </option>
+          {addresses.map((address) => (
+            <option key={address.id} value={address.id}>
+              {address.label} · {shortAddress(address.value)}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={saveAddress}
+          disabled={!value.trim()}
+          className="shrink-0 rounded-lg border border-violet-400/20 bg-violet-400/10 px-3 py-2 text-xs font-medium text-violet-200 transition hover:bg-violet-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {selectedAddress ? "Переименовать" : "Сохранить"}
+        </button>
+      </div>
+      <div className="mt-2 flex items-center justify-between gap-3 px-1">
+        <span className="text-[11px] text-zinc-600">
+          Только в localStorage этого браузера
+        </span>
+        {selectedAddress ? (
+          <button
+            type="button"
+            onClick={removeAddress}
+            className="text-[11px] text-zinc-500 transition hover:text-red-300"
+          >
+            Удалить
+          </button>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -337,14 +551,26 @@ export default function SheetsBuilder() {
             <div className="my-5 h-px bg-white/10" />
 
             <div className="space-y-4">
-              {source.parameters.map((parameter) => (
-                <ParameterField
-                  key={parameter.key}
-                  parameter={parameter}
-                  value={values[parameter.key] ?? ""}
-                  onChange={(value) => updateValue(parameter.key, value)}
-                />
-              ))}
+              {source.parameters.map((parameter) => {
+                const kind = addressKind(parameter);
+                return (
+                  <div key={parameter.key}>
+                    <ParameterField
+                      parameter={parameter}
+                      value={values[parameter.key] ?? ""}
+                      onChange={(value) => updateValue(parameter.key, value)}
+                    />
+                    {kind ? (
+                      <SavedAddressPicker
+                        kind={kind}
+                        value={values[parameter.key] ?? ""}
+                        onChange={(value) => updateValue(parameter.key, value)}
+                        onError={setError}
+                      />
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
 
             {source.usesDataHuntToken ? (
