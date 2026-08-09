@@ -361,41 +361,52 @@ export default function SheetsBuilder() {
   const selectedHeader = selectedCell
     ? (rows[0]?.[selectedCell.column] ?? `Столбец ${selectedCell.column + 1}`)
     : "";
-  const supportsStableFormula = Boolean(
-    selectedCell &&
-      selectedCell.row > 0 &&
-      source.keyColumn &&
-      rows[0]?.includes(source.keyColumn) &&
-      rows[selectedCell.row]?.[rows[0].indexOf(source.keyColumn)]
-  );
   const stableValueUrl =
-    selectedCell && loadedUrl && supportsStableFormula
-      ? buildStableValueUrl({
-          apiBaseUrl: API_BASE_URL,
-          source: source.id,
-          sourceUrl: loadedUrl,
-          rows,
-          rowIndex: selectedCell.row,
-          columnIndex: selectedCell.column,
-          keyColumn: source.keyColumn,
-        })
+    selectedCell
+      ? stableValueUrlForCell(selectedCell.row, selectedCell.column)
       : "";
+  const supportsStableFormula = Boolean(stableValueUrl);
   const selectedImportUrl =
     stableFormula && stableValueUrl ? stableValueUrl : loadedUrl;
 
   const formula =
-    selectedCell && loadedUrl
-      ? buildImportFormula({
-          url: loadedUrl,
-          stableUrl: stableValueUrl,
-          rows,
-          rowIndex: selectedCell.row,
-          columnIndex: selectedCell.column,
-          separator,
-          keyColumn: source.keyColumn,
-          stable: stableFormula && supportsStableFormula,
-        })
+    selectedCell
+      ? formulaForCell(selectedCell.row, selectedCell.column)
       : "";
+
+  function stableValueUrlForCell(rowIndex: number, columnIndex: number) {
+    if (!loadedUrl) return "";
+    return buildStableValueUrl({
+      apiBaseUrl: API_BASE_URL,
+      source: source.id,
+      sourceUrl: loadedUrl,
+      rows,
+      rowIndex,
+      columnIndex,
+      keyColumn: source.keyColumn,
+    });
+  }
+
+  function formulaForCell(rowIndex: number, columnIndex: number) {
+    if (!loadedUrl) return "";
+    const nextStableUrl = stableValueUrlForCell(rowIndex, columnIndex);
+    return buildImportFormula({
+      url: loadedUrl,
+      stableUrl: nextStableUrl,
+      rows,
+      rowIndex,
+      columnIndex,
+      separator,
+      keyColumn: source.keyColumn,
+      stable: stableFormula && Boolean(nextStableUrl),
+    });
+  }
+
+  function selectCellAndCopyFormula(rowIndex: number, columnIndex: number) {
+    setSelectedCell({ row: rowIndex, column: columnIndex });
+    const nextFormula = formulaForCell(rowIndex, columnIndex);
+    if (nextFormula) void copyText(nextFormula, "formula");
+  }
 
   function changeSource(nextSourceId: string) {
     const nextSource =
@@ -641,11 +652,19 @@ export default function SheetsBuilder() {
                 <div>
                   <h2 className="font-medium text-white">2. Выберите ячейку</h2>
                   <p className="mt-1 text-xs text-zinc-500">
-                    Кликните по любому значению, которое хотите получать в Sheets.
+                    Кликните по значению — готовая формула сразу скопируется.
                   </p>
                 </div>
                 {rows.length > 0 ? (
                   <div className="flex items-center gap-2 text-xs text-zinc-500">
+                    {copied === "formula" ? (
+                      <>
+                        <span className="text-emerald-300">
+                          Формула скопирована
+                        </span>
+                        <span className="text-zinc-700">•</span>
+                      </>
+                    ) : null}
                     <span>{Math.max(0, rows.length - 1)} строк</span>
                     <span className="text-zinc-700">•</span>
                     <span>{rows[0]?.length ?? 0} столбцов</span>
@@ -678,10 +697,7 @@ export default function SheetsBuilder() {
                                 <button
                                   type="button"
                                   onClick={() =>
-                                    setSelectedCell({
-                                      row: rowIndex,
-                                      column: columnIndex,
-                                    })
+                                    selectCellAndCopyFormula(rowIndex, columnIndex)
                                   }
                                   className={`block min-w-full whitespace-nowrap px-3 py-2.5 text-left outline-none transition ${
                                     rowIndex === 0
