@@ -6,7 +6,11 @@ import {
   sheetSources,
   type SheetParameter,
 } from "@/components/sheets/catalog";
-import { buildImportFormula, parseCsv } from "@/components/sheets/csv";
+import {
+  buildImportFormula,
+  buildStableValueUrl,
+  parseCsv,
+} from "@/components/sheets/csv";
 
 const API_BASE_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? "https://hunt.data.lisacorp.com"
@@ -364,11 +368,31 @@ export default function SheetsBuilder() {
       rows[0]?.includes(source.keyColumn) &&
       rows[selectedCell.row]?.[rows[0].indexOf(source.keyColumn)]
   );
+  const stableValueUrl =
+    selectedCell && loadedUrl && supportsStableFormula
+      ? buildStableValueUrl({
+          apiBaseUrl: API_BASE_URL,
+          source: source.id,
+          sourceUrl: loadedUrl,
+          rows,
+          rowIndex: selectedCell.row,
+          columnIndex: selectedCell.column,
+          keyColumn: source.keyColumn,
+        })
+      : "";
+  const selectedImportUrl =
+    stableFormula && stableValueUrl ? stableValueUrl : loadedUrl;
+  const usesPositionFormula = Boolean(
+    selectedCell &&
+      !(rows.length === 1 && rows[0]?.length === 1) &&
+      !(stableFormula && stableValueUrl)
+  );
 
   const formula =
     selectedCell && loadedUrl
       ? buildImportFormula({
           url: loadedUrl,
+          stableUrl: stableValueUrl,
           rows,
           rowIndex: selectedCell.row,
           columnIndex: selectedCell.column,
@@ -721,24 +745,11 @@ export default function SheetsBuilder() {
                   </button>
                 </div>
 
-                <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                  <label className="text-xs text-zinc-400">
-                    Разделитель аргументов в вашем Sheets
-                    <select
-                      value={separator}
-                      onChange={(event) =>
-                        setSeparator(event.target.value as "," | ";")
-                      }
-                      className={parameterInputClass()}
-                    >
-                      <option value=";">Точка с запятой ;</option>
-                      <option value=",">Запятая ,</option>
-                    </select>
-                  </label>
-
+                {supportsStableFormula || usesPositionFormula ? (
+                  <div className="mt-6 grid gap-4 sm:grid-cols-2">
                   {supportsStableFormula ? (
                     <label className="text-xs text-zinc-400">
-                      Способ выбора ячейки
+                      Способ получения значения
                       <select
                         value={stableFormula ? "stable" : "position"}
                         onChange={(event) =>
@@ -746,12 +757,31 @@ export default function SheetsBuilder() {
                         }
                         className={parameterInputClass()}
                       >
-                        <option value="stable">По ID позиции и столбцу</option>
+                        <option value="stable">
+                          Прямой value-route по ID
+                        </option>
                         <option value="position">По номеру строки и столбца</option>
                       </select>
                     </label>
                   ) : null}
-                </div>
+
+                    {usesPositionFormula ? (
+                      <label className="text-xs text-zinc-400">
+                        Разделитель аргументов в вашем Sheets
+                        <select
+                          value={separator}
+                          onChange={(event) =>
+                            setSeparator(event.target.value as "," | ";")
+                          }
+                          className={parameterInputClass()}
+                        >
+                          <option value=";">Точка с запятой ;</option>
+                          <option value=",">Запятая ,</option>
+                        </select>
+                      </label>
+                    ) : null}
+                  </div>
+                ) : null}
 
                 <label className="mt-5 block text-xs text-zinc-400">
                   Готовая формула
@@ -776,17 +806,21 @@ export default function SheetsBuilder() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => copyText(loadedUrl, "url")}
+                    onClick={() => copyText(selectedImportUrl, "url")}
                     className="rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm text-zinc-300 transition hover:bg-white/10 hover:text-white"
                   >
-                    {copied === "url" ? "URL скопирован" : "Копировать CSV URL"}
+                    {copied === "url"
+                      ? "URL скопирован"
+                      : stableFormula && stableValueUrl
+                        ? "Копировать value URL"
+                        : "Копировать CSV URL"}
                   </button>
                 </div>
 
                 <p className="mt-4 text-xs leading-5 text-zinc-500">
-                  Вставьте формулу в пустую ячейку Google Sheets. Сервер держит CSV
-                  в памяти минимум 60 секунд; Google Sheets может обновлять импорт по
-                  собственному расписанию.
+                  {stableFormula && stableValueUrl
+                    ? "Value-route каждый раз находит строку по постоянному ID и возвращает только эту ячейку. Порядок и количество строк в исходной таблице не влияют на ссылку."
+                    : "Вставьте формулу в пустую ячейку Google Sheets. Сервер держит CSV в памяти минимум 60 секунд; Google Sheets может обновлять импорт по собственному расписанию."}
                 </p>
               </section>
             ) : null}

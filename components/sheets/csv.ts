@@ -51,6 +51,7 @@ export function escapeFormulaText(value: string) {
 
 type FormulaOptions = {
   url: string;
+  stableUrl?: string;
   rows: string[][];
   rowIndex: number;
   columnIndex: number;
@@ -61,6 +62,7 @@ type FormulaOptions = {
 
 export function buildImportFormula({
   url,
+  stableUrl,
   rows,
   rowIndex,
   columnIndex,
@@ -71,6 +73,10 @@ export function buildImportFormula({
   const escapedUrl = escapeFormulaText(url);
   if (rows.length === 1 && rows[0]?.length === 1) {
     return `=IMPORTDATA("${escapedUrl}")`;
+  }
+
+  if (stable && stableUrl) {
+    return `=IMPORTDATA("${escapeFormulaText(stableUrl)}")`;
   }
 
   const header = rows[0] ?? [];
@@ -92,4 +98,44 @@ export function buildImportFormula({
   }
 
   return `=INDEX(IMPORTDATA("${escapedUrl}")${separator}${rowIndex + 1}${separator}${columnIndex + 1})`;
+}
+
+type StableValueUrlOptions = {
+  apiBaseUrl: string;
+  source: string;
+  sourceUrl: string;
+  rows: string[][];
+  rowIndex: number;
+  columnIndex: number;
+  keyColumn?: string;
+};
+
+export function buildStableValueUrl({
+  apiBaseUrl,
+  source,
+  sourceUrl,
+  rows,
+  rowIndex,
+  columnIndex,
+  keyColumn,
+}: StableValueUrlOptions) {
+  if (!keyColumn || rowIndex <= 0) return "";
+
+  const header = rows[0] ?? [];
+  const keyColumnIndex = header.indexOf(keyColumn);
+  const key = rows[rowIndex]?.[keyColumnIndex] ?? "";
+  const column = header[columnIndex] ?? "";
+  if (keyColumnIndex < 0 || !key || !column) return "";
+
+  const valueUrl = new URL("/value", apiBaseUrl);
+  valueUrl.searchParams.set("source", source);
+  valueUrl.searchParams.set("key", key);
+  valueUrl.searchParams.set("column", column);
+
+  const originalUrl = new URL(sourceUrl);
+  originalUrl.searchParams.forEach((value, name) => {
+    valueUrl.searchParams.append(name, value);
+  });
+
+  return valueUrl.toString();
 }
