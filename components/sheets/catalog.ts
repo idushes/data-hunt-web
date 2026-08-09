@@ -126,6 +126,31 @@ export const sheetSources: SheetSource[] = [
     ],
   },
   {
+    id: "uniswap",
+    name: "Uniswap V3 positions",
+    group: "DeFi",
+    description:
+      "NFT-позиции Uniswap V3: текущие amounts, диапазон цены, in-range и стоимость в USD.",
+    path: "/uniswap/positions.csv",
+    keyColumn: "position_id",
+    parameters: [
+      evmAddress,
+      {
+        key: "chain_id",
+        label: "Сеть",
+        kind: "select",
+        defaultValue: "1",
+        options: [{ label: "Ethereum", value: "1" }],
+      },
+      {
+        key: "include_closed",
+        label: "Показывать закрытые позиции",
+        kind: "boolean",
+        defaultValue: "false",
+      },
+    ],
+  },
+  {
     id: "debt",
     name: "DataHunt debt",
     group: "DataHunt account",
