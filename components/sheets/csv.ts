@@ -72,11 +72,11 @@ export function buildImportFormula({
 }: FormulaOptions) {
   const escapedUrl = escapeFormulaText(url);
   if (rows.length === 1 && rows[0]?.length === 1) {
-    return `=IMPORTDATA("${escapedUrl}")`;
+    return `=INDEX(IMPORTDATA("${escapedUrl}")${separator}1${separator}1)`;
   }
 
   if (stable && stableUrl) {
-    return `=IMPORTDATA("${escapeFormulaText(stableUrl)}")`;
+    return `=INDEX(IMPORTDATA("${escapeFormulaText(stableUrl)}")${separator}1${separator}1)`;
   }
 
   const header = rows[0] ?? [];

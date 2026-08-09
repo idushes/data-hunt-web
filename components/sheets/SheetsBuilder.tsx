@@ -382,11 +382,6 @@ export default function SheetsBuilder() {
       : "";
   const selectedImportUrl =
     stableFormula && stableValueUrl ? stableValueUrl : loadedUrl;
-  const usesPositionFormula = Boolean(
-    selectedCell &&
-      !(rows.length === 1 && rows[0]?.length === 1) &&
-      !(stableFormula && stableValueUrl)
-  );
 
   const formula =
     selectedCell && loadedUrl
@@ -745,8 +740,7 @@ export default function SheetsBuilder() {
                   </button>
                 </div>
 
-                {supportsStableFormula || usesPositionFormula ? (
-                  <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                <div className="mt-6 grid gap-4 sm:grid-cols-2">
                   {supportsStableFormula ? (
                     <label className="text-xs text-zinc-400">
                       Способ получения значения
@@ -765,23 +759,20 @@ export default function SheetsBuilder() {
                     </label>
                   ) : null}
 
-                    {usesPositionFormula ? (
-                      <label className="text-xs text-zinc-400">
-                        Разделитель аргументов в вашем Sheets
-                        <select
-                          value={separator}
-                          onChange={(event) =>
-                            setSeparator(event.target.value as "," | ";")
-                          }
-                          className={parameterInputClass()}
-                        >
-                          <option value=";">Точка с запятой ;</option>
-                          <option value=",">Запятая ,</option>
-                        </select>
-                      </label>
-                    ) : null}
-                  </div>
-                ) : null}
+                  <label className="text-xs text-zinc-400">
+                    Разделитель аргументов в вашем Sheets
+                    <select
+                      value={separator}
+                      onChange={(event) =>
+                        setSeparator(event.target.value as "," | ";")
+                      }
+                      className={parameterInputClass()}
+                    >
+                      <option value=";">Точка с запятой ;</option>
+                      <option value=",">Запятая ,</option>
+                    </select>
+                  </label>
+                </div>
 
                 <label className="mt-5 block text-xs text-zinc-400">
                   Готовая формула
