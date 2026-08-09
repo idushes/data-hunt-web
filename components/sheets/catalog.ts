@@ -89,7 +89,7 @@ export const sheetSources: SheetSource[] = [
     id: "aave",
     name: "Aave positions",
     group: "DeFi",
-    description: "Депозиты, займы, APY и health factor позиций Aave V3.",
+    description: "Депозиты, займы, APY и health factor позиций Aave V3 и V4.",
     path: "/aave/positions.csv",
     keyColumn: "position_id",
     parameters: [
