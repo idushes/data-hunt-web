@@ -174,6 +174,25 @@ export const sheetSources: SheetSource[] = [
     ],
   },
   {
+    id: "stakedao",
+    name: "Stake DAO positions",
+    group: "DeFi",
+    description:
+      "Strategy vault/gauge и locker-позиции Stake DAO с amount, USD value и APR.",
+    path: "/stakedao/positions.csv",
+    keyColumn: "position_id",
+    parameters: [
+      evmAddress,
+      {
+        key: "chain_id",
+        label: "Сеть",
+        kind: "select",
+        defaultValue: "1",
+        options: [{ label: "Ethereum", value: "1" }],
+      },
+    ],
+  },
+  {
     id: "debt",
     name: "DataHunt debt",
     group: "DataHunt account",
