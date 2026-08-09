@@ -30,7 +30,7 @@ export default function Header() {
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center font-bold text-white">
                             D
                         </div>
-                        <span className="text-lg font-bold tracking-wide text-white">DataHunt</span>
+                        <span className="hidden text-lg font-bold tracking-wide text-white sm:inline">DataHunt</span>
                     </Link>
 
                     <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-400">
@@ -40,6 +40,14 @@ export default function Header() {
                     </nav>
 
                     <div className="flex items-center gap-3 sm:gap-4">
+                        <Link
+                            href="/sheets"
+                            aria-label="Open Google Sheets helper"
+                            className="px-3 sm:px-4 py-2 text-sm font-medium bg-violet-500/10 hover:bg-violet-500/20 text-violet-200 rounded-lg transition-all border border-violet-400/20 backdrop-blur-sm"
+                        >
+                            <span className="sm:hidden">CSV</span>
+                            <span className="hidden sm:inline">Sheets</span>
+                        </Link>
                         <Link
                             href="/gmtrade"
                             aria-label="Open GMTRADE"
@@ -53,27 +61,30 @@ export default function Header() {
                             <>
                                 <Link
                                     href="/account"
-                                    className="px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all border border-white/5 backdrop-blur-sm flex items-center gap-2"
+                                    aria-label="Open account"
+                                    className="px-3 sm:px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all border border-white/5 backdrop-blur-sm flex items-center gap-2"
                                 >
                                     <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                                    Account
+                                    <span className="hidden sm:inline">Account</span>
                                 </Link>
                                 <Link
                                     href="/history"
-                                    className="px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all border border-white/5 backdrop-blur-sm flex items-center gap-2"
+                                    aria-label="Open history"
+                                    className="px-3 sm:px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all border border-white/5 backdrop-blur-sm flex items-center gap-2"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-blue-400">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                     </svg>
-                                    History
+                                    <span className="hidden sm:inline">History</span>
                                 </Link>
                             </>
                         ) : (
                             <button
                                 onClick={() => setIsAuthModalOpen(true)}
-                                className="px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all border border-white/5 backdrop-blur-sm"
+                                className="px-3 sm:px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all border border-white/5 backdrop-blur-sm"
                             >
-                                Sign & Login
+                                <span className="sm:hidden">Login</span>
+                                <span className="hidden sm:inline">Sign & Login</span>
                             </button>
                         )}
                     </div>
