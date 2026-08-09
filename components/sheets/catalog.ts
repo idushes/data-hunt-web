@@ -32,6 +32,7 @@ export type SheetSource = {
   requiredAny?: string[];
   keyColumn?: string;
   usesDataHuntToken?: boolean;
+  usesServerCredentials?: boolean;
 };
 
 const dataHuntToken: SheetParameter = {
@@ -338,25 +339,8 @@ export const sheetSources: SheetSource[] = [
     description: "Coinbase App и INTX portfolio balances/positions.",
     path: "/coinbase/balance",
     keyColumn: "id",
+    usesServerCredentials: true,
     parameters: [
-      {
-        key: "token",
-        label: "Готовый Bearer token",
-        kind: "secret",
-        placeholder: "Необязательно",
-      },
-      {
-        key: "key_name",
-        label: "API key name",
-        kind: "text",
-        placeholder: "organizations/…/apiKeys/…",
-      },
-      {
-        key: "key_secret",
-        label: "EC private key",
-        kind: "textarea",
-        placeholder: "-----BEGIN EC PRIVATE KEY-----",
-      },
       {
         key: "include_zero",
         label: "Показывать нулевые балансы",

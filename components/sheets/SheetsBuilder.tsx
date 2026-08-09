@@ -607,8 +607,9 @@ export default function SheetsBuilder() {
 
             <div className="mt-5 flex flex-col gap-4 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
               <p className="max-w-2xl text-xs leading-5 text-zinc-600">
-                Токены и ключи попадут в URL формулы. Не публикуйте лист с такими
-                формулами и не давайте к нему общий доступ.
+                {source.usesServerCredentials
+                  ? "Учётные данные хранятся на сервисе и не попадут в URL формулы."
+                  : "Токены и ключи попадут в URL формулы. Не публикуйте лист с такими формулами и не давайте к нему общий доступ."}
               </p>
 
               <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
