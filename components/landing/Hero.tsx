@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { sheetSources } from "@/components/sheets/catalog";
 
 export default function Hero() {
   return (
@@ -10,7 +11,7 @@ export default function Hero() {
         <div>
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-violet-200">
             <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shadow-[0_0_12px_rgba(167,139,250,0.9)]" />
-            14 ready-made tables
+            {sheetSources.length} ready-made tables
           </div>
 
           <h1 className="max-w-2xl text-6xl font-semibold tracking-[-0.06em] text-white sm:text-7xl lg:text-[82px] lg:leading-[0.96]">

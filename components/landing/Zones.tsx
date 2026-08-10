@@ -1,19 +1,7 @@
-const sources = [
-  { mark: "FL", name: "Fluid", tone: "from-blue-500 to-cyan-300" },
-  { mark: "A", name: "Aave", tone: "from-violet-500 to-fuchsia-400" },
-  { mark: "U", name: "Uniswap", tone: "from-pink-500 to-rose-400" },
-  { mark: "SD", name: "Stake DAO", tone: "from-red-500 to-orange-400" },
-  { mark: "Ξ", name: "Ethereum", tone: "from-slate-500 to-indigo-300" },
-  { mark: "S", name: "Solana", tone: "from-emerald-400 to-violet-500" },
-  { mark: "$", name: "USDC / USDT", tone: "from-blue-500 to-emerald-400" },
-  { mark: "K", name: "Kamino", tone: "from-orange-500 to-amber-300" },
-  { mark: "GM", name: "GMTrade", tone: "from-emerald-500 to-lime-300" },
-  { mark: "C", name: "Coinbase", tone: "from-blue-600 to-blue-400" },
-  { mark: "HL", name: "Hyperliquid", tone: "from-cyan-400 to-emerald-300" },
-  { mark: "L", name: "Lighter", tone: "from-zinc-400 to-white" },
-  { mark: "P", name: "Paradex", tone: "from-orange-500 to-violet-500" },
-  { mark: "CMC", name: "CoinMarketCap", tone: "from-indigo-500 to-blue-300" },
-];
+import {
+  landingSourceGroups,
+  landingSources,
+} from "@/components/landing/sources";
 
 export default function Zones() {
   return (
@@ -23,19 +11,28 @@ export default function Zones() {
           <h2 className="text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl">
             All your crypto. One sheet.
           </h2>
-          <p className="text-sm text-zinc-500">DeFi · Wallets · Solana · Exchanges · Prices</p>
+          <p className="text-sm text-zinc-500">
+            {landingSourceGroups.join(" · ")}
+          </p>
         </div>
 
         <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
-          {sources.map((source) => (
+          {landingSources.map((source) => (
             <div
-              key={source.name}
+              key={source.id}
               className="group flex min-h-36 flex-col justify-between rounded-2xl border border-white/10 bg-white/[0.025] p-4 transition hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.05]"
             >
               <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${source.tone} text-sm font-black text-black shadow-lg shadow-black/30`}>
                 {source.mark}
               </div>
-              <p className="mt-6 text-sm font-medium text-zinc-200">{source.name}</p>
+              <div className="mt-6">
+                <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-600">
+                  {source.group}
+                </p>
+                <p className="mt-1 text-sm font-medium leading-5 text-zinc-200">
+                  {source.name}
+                </p>
+              </div>
             </div>
           ))}
         </div>
