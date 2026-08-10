@@ -4,7 +4,7 @@ import SheetsBuilder from "@/components/sheets/SheetsBuilder";
 
 export const metadata: Metadata = {
   title: "Google Sheets helper — DataHunt",
-  description: "Выберите CSV и скопируйте формулу для конкретной ячейки.",
+  description: "Choose a CSV source and copy a formula for a specific cell.",
 };
 
 export default function SheetsPage() {

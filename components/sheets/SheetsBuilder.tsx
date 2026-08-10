@@ -125,7 +125,7 @@ function errorMessage(content: string) {
   } catch {
     // The API can return a plain-text error.
   }
-  return content || "Не удалось загрузить данные";
+  return content || "Unable to load data";
 }
 
 function ParameterField({
@@ -156,7 +156,7 @@ function ParameterField({
       <span className="flex items-center gap-1.5">
         {parameter.label}
         {parameter.required ? (
-          <span className="text-amber-300" aria-label="обязательное поле">
+          <span className="text-amber-300" aria-label="required field">
             *
           </span>
         ) : null}
@@ -238,8 +238,8 @@ function SavedAddressPicker({
     if (!validAddress(trimmed, kind)) {
       onError(
         kind === "evm"
-          ? "Введите корректный EVM-адрес перед сохранением."
-          : "Введите корректный Solana-адрес перед сохранением."
+          ? "Enter a valid EVM address before saving."
+          : "Enter a valid Solana address before saving."
       );
       return;
     }
@@ -250,7 +250,7 @@ function SavedAddressPicker({
         normalizedAddress(address.value, kind) === normalizedAddress(trimmed, kind)
     );
     const defaultLabel = existing?.label ?? shortAddress(trimmed);
-    const label = window.prompt("Название для адреса", defaultLabel)?.trim();
+    const label = window.prompt("Label for this address", defaultLabel)?.trim();
     if (label === undefined) return;
 
     const nextAddress: SavedAddress = {
@@ -273,7 +273,7 @@ function SavedAddressPicker({
   function removeAddress() {
     if (!selectedAddress) return;
     const confirmed = window.confirm(
-      `Удалить «${selectedAddress.label}» из сохранённых адресов?`
+      `Remove “${selectedAddress.label}” from saved addresses?`
     );
     if (!confirmed) return;
 
@@ -288,7 +288,7 @@ function SavedAddressPicker({
       <div className="flex gap-2">
         <select
           aria-label={
-            kind === "evm" ? "Сохранённые EVM-адреса" : "Сохранённые Solana-адреса"
+            kind === "evm" ? "Saved EVM addresses" : "Saved Solana addresses"
           }
           value={selectedAddress?.id ?? ""}
           onChange={(event) => selectAddress(event.target.value)}
@@ -296,8 +296,8 @@ function SavedAddressPicker({
         >
           <option value="">
             {addresses.length > 0
-              ? "Выбрать сохранённый адрес"
-              : "Сохранённых адресов пока нет"}
+              ? "Select a saved address"
+              : "No saved addresses yet"}
           </option>
           {addresses.map((address) => (
             <option key={address.id} value={address.id}>
@@ -311,12 +311,12 @@ function SavedAddressPicker({
           disabled={!value.trim()}
           className="shrink-0 rounded-lg border border-violet-400/20 bg-violet-400/10 px-3 py-2 text-xs font-medium text-violet-200 transition hover:bg-violet-400/20 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {selectedAddress ? "Переименовать" : "Сохранить"}
+          {selectedAddress ? "Rename" : "Save"}
         </button>
       </div>
       <div className="mt-2 flex items-center justify-between gap-3 px-1">
         <span className="text-[11px] text-zinc-600">
-          Только в localStorage этого браузера
+          Stored only in this browser&apos;s localStorage
         </span>
         {selectedAddress ? (
           <button
@@ -324,7 +324,7 @@ function SavedAddressPicker({
             onClick={removeAddress}
             className="text-[11px] text-zinc-500 transition hover:text-red-300"
           >
-            Удалить
+            Remove
           </button>
         ) : null}
       </div>
@@ -359,7 +359,7 @@ export default function SheetsBuilder() {
     ? (rows[selectedCell.row]?.[selectedCell.column] ?? "")
     : "";
   const selectedHeader = selectedCell
-    ? (rows[0]?.[selectedCell.column] ?? `Столбец ${selectedCell.column + 1}`)
+    ? (rows[0]?.[selectedCell.column] ?? `Column ${selectedCell.column + 1}`)
     : "";
   const stableValueUrl =
     selectedCell
@@ -435,7 +435,7 @@ export default function SheetsBuilder() {
   function useAccountToken() {
     const token = localStorage.getItem("data_hunt_token") ?? "";
     if (!token) {
-      setError("Сначала войдите в DataHunt, чтобы подставить токен аккаунта.");
+      setError("Sign in to DataHunt first to use your account token.");
       return;
     }
     updateValue("token", token);
@@ -446,7 +446,7 @@ export default function SheetsBuilder() {
     const missing = source.parameters.find(
       (parameter) => parameter.required && !values[parameter.key]?.trim()
     );
-    if (missing) return `Заполните поле «${missing.label}».`;
+    if (missing) return `Complete the “${missing.label}” field.`;
 
     if (
       source.requiredAny &&
@@ -456,7 +456,7 @@ export default function SheetsBuilder() {
         (key) =>
           source.parameters.find((parameter) => parameter.key === key)?.label ?? key
       );
-      return `Заполните хотя бы одно поле: ${labels.join(", ")}.`;
+      return `Complete at least one field: ${labels.join(", ")}.`;
     }
 
     return "";
@@ -496,7 +496,7 @@ export default function SheetsBuilder() {
         : [[content.trim()]];
 
       if (nextRows.length === 0) {
-        throw new Error("API вернул пустую таблицу.");
+        throw new Error("The API returned an empty table.");
       }
 
       setRows(nextRows);
@@ -507,7 +507,7 @@ export default function SheetsBuilder() {
     } catch (caught) {
       setLoadedUrl("");
       setError(
-        caught instanceof Error ? caught.message : "Не удалось загрузить таблицу"
+        caught instanceof Error ? caught.message : "Unable to load the table"
       );
     } finally {
       setLoading(false);
@@ -520,7 +520,7 @@ export default function SheetsBuilder() {
       setCopied(target);
       window.setTimeout(() => setCopied(null), 1800);
     } catch {
-      setError("Браузер не разрешил копирование. Выделите текст вручную.");
+      setError("The browser blocked clipboard access. Select the text manually.");
     }
   }
 
@@ -537,11 +537,11 @@ export default function SheetsBuilder() {
             Google Sheets helper
           </div>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">
-            Одна нужная цифра — сразу в таблицу
+            One value, straight into your spreadsheet
           </h1>
           <p className="mt-4 text-base leading-7 text-zinc-400 sm:text-lg">
-            Выберите источник, загрузите данные и нажмите на нужную ячейку.
-            Конструктор соберёт формулу, которую можно вставить прямо в Google
+            Choose a source, load the data, and click the cell you need. The
+            builder will create a formula you can paste directly into Google
             Sheets.
           </p>
         </div>
@@ -549,14 +549,14 @@ export default function SheetsBuilder() {
         <div className="space-y-6">
           <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 shadow-2xl shadow-black/30 sm:p-6">
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="font-medium text-white">1. Источник данных</h2>
+              <h2 className="font-medium text-white">1. Data source</h2>
               <span className="text-xs text-zinc-500">{sheetSources.length} CSV</span>
             </div>
 
             <div className="grid gap-6 lg:grid-cols-[minmax(260px,360px)_minmax(0,1fr)]">
               <div>
                 <label className="block text-sm text-zinc-300">
-                  Таблица
+                  Table
                   <select
                     value={source.id}
                     onChange={(event) => changeSource(event.target.value)}
@@ -608,8 +608,8 @@ export default function SheetsBuilder() {
             <div className="mt-5 flex flex-col gap-4 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
               <p className="max-w-2xl text-xs leading-5 text-zinc-600">
                 {source.usesServerCredentials
-                  ? "Учётные данные хранятся на сервисе и не попадут в URL формулы."
-                  : "Токены и ключи попадут в URL формулы. Не публикуйте лист с такими формулами и не давайте к нему общий доступ."}
+                  ? "Credentials are stored by the service and will not be included in the formula URL."
+                  : "Tokens and keys will be included in the formula URL. Do not publish or share access to a sheet containing these formulas."}
               </p>
 
               <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
@@ -619,7 +619,7 @@ export default function SheetsBuilder() {
                     onClick={useAccountToken}
                     className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
                   >
-                    Подставить токен аккаунта
+                    Use account token
                   </button>
                 ) : null}
 
@@ -632,7 +632,7 @@ export default function SheetsBuilder() {
                   {loading ? (
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   ) : null}
-                  {loading ? "Загружаю…" : "Загрузить таблицу"}
+                  {loading ? "Loading…" : "Load table"}
                 </button>
               </div>
             </div>
@@ -651,9 +651,9 @@ export default function SheetsBuilder() {
             <section className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
               <div className="flex flex-col gap-3 border-b border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="font-medium text-white">2. Выберите ячейку</h2>
+                  <h2 className="font-medium text-white">2. Select a cell</h2>
                   <p className="mt-1 text-xs text-zinc-500">
-                    Кликните по значению — готовая формула сразу скопируется.
+                    Click a value to copy the ready-to-use formula.
                   </p>
                 </div>
                 {rows.length > 0 ? (
@@ -661,14 +661,14 @@ export default function SheetsBuilder() {
                     {copied === "formula" ? (
                       <>
                         <span className="text-emerald-300">
-                          Формула скопирована
+                          Formula copied
                         </span>
                         <span className="text-zinc-700">•</span>
                       </>
                     ) : null}
-                    <span>{Math.max(0, rows.length - 1)} строк</span>
+                    <span>{Math.max(0, rows.length - 1)} rows</span>
                     <span className="text-zinc-700">•</span>
-                    <span>{rows[0]?.length ?? 0} столбцов</span>
+                    <span>{rows[0]?.length ?? 0} columns</span>
                   </div>
                 ) : null}
               </div>
@@ -711,7 +711,7 @@ export default function SheetsBuilder() {
                                   }`}
                                   title={cell}
                                 >
-                                  {cell || <span className="text-zinc-700">пусто</span>}
+                                  {cell || <span className="text-zinc-700">empty</span>}
                                 </button>
                               </CellTag>
                             );
@@ -726,9 +726,9 @@ export default function SheetsBuilder() {
                   <div className="mb-4 grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-white/5 font-mono text-lg text-zinc-500">
                     fx
                   </div>
-                  <p className="text-sm text-zinc-400">Таблица появится здесь</p>
+                  <p className="text-sm text-zinc-400">Your table will appear here</p>
                   <p className="mt-1 max-w-sm text-xs leading-5 text-zinc-600">
-                    Заполните параметры сверху и нажмите «Загрузить таблицу».
+                    Complete the parameters above and click &ldquo;Load table&rdquo;.
                   </p>
                 </div>
               )}
@@ -739,13 +739,13 @@ export default function SheetsBuilder() {
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="text-xs font-medium uppercase tracking-[0.16em] text-violet-300">
-                      Выбрано
+                      Selected
                     </p>
                     <h2 className="mt-2 text-xl font-semibold text-white">
-                      {selectedHeader || "Единственное значение"}
+                      {selectedHeader || "Single value"}
                     </h2>
                     <p className="mt-1 max-w-xl break-all font-mono text-sm text-zinc-400">
-                      {selectedValue || "пустая ячейка"}
+                      {selectedValue || "empty cell"}
                     </p>
                   </div>
                   <button
@@ -753,14 +753,14 @@ export default function SheetsBuilder() {
                     onClick={() => copyText(selectedValue, "value")}
                     className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-300 transition hover:bg-white/10 hover:text-white"
                   >
-                    {copied === "value" ? "Значение скопировано" : "Копировать значение"}
+                    {copied === "value" ? "Value copied" : "Copy value"}
                   </button>
                 </div>
 
                 <div className="mt-6 grid gap-4 sm:grid-cols-2">
                   {supportsStableFormula ? (
                     <label className="text-xs text-zinc-400">
-                      Способ получения значения
+                      Value retrieval method
                       <select
                         value={stableFormula ? "stable" : "position"}
                         onChange={(event) =>
@@ -769,15 +769,15 @@ export default function SheetsBuilder() {
                         className={parameterInputClass()}
                       >
                         <option value="stable">
-                          Прямой value-route по ID
+                          Stable value route by ID
                         </option>
-                        <option value="position">По номеру строки и столбца</option>
+                        <option value="position">By row and column number</option>
                       </select>
                     </label>
                   ) : null}
 
                   <label className="text-xs text-zinc-400">
-                    Разделитель аргументов в вашем Sheets
+                    Argument separator in your Sheets locale
                     <select
                       value={separator}
                       onChange={(event) =>
@@ -785,14 +785,14 @@ export default function SheetsBuilder() {
                       }
                       className={parameterInputClass()}
                     >
-                      <option value=";">Точка с запятой ;</option>
-                      <option value=",">Запятая ,</option>
+                      <option value=";">Semicolon ;</option>
+                      <option value=",">Comma ,</option>
                     </select>
                   </label>
                 </div>
 
                 <label className="mt-5 block text-xs text-zinc-400">
-                  Готовая формула
+                  Ready-to-use formula
                   <textarea
                     readOnly
                     value={formula}
@@ -809,8 +809,8 @@ export default function SheetsBuilder() {
                     className="flex-1 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-violet-100"
                   >
                     {copied === "formula"
-                      ? "Формула скопирована"
-                      : "Скопировать формулу для Google Sheets"}
+                      ? "Formula copied"
+                      : "Copy Google Sheets formula"}
                   </button>
                   <button
                     type="button"
@@ -818,17 +818,17 @@ export default function SheetsBuilder() {
                     className="rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm text-zinc-300 transition hover:bg-white/10 hover:text-white"
                   >
                     {copied === "url"
-                      ? "URL скопирован"
+                      ? "URL copied"
                       : stableFormula && stableValueUrl
-                        ? "Копировать value URL"
-                        : "Копировать CSV URL"}
+                        ? "Copy value URL"
+                        : "Copy CSV URL"}
                   </button>
                 </div>
 
                 <p className="mt-4 text-xs leading-5 text-zinc-500">
                   {stableFormula && stableValueUrl
-                    ? "Value-route каждый раз находит строку по постоянному ID и возвращает только эту ячейку. Порядок и количество строк в исходной таблице не влияют на ссылку."
-                    : "Вставьте формулу в пустую ячейку Google Sheets. Сервер держит CSV в памяти минимум 60 секунд; Google Sheets может обновлять импорт по собственному расписанию."}
+                    ? "The value route finds the row by its stable ID on every request and returns only that cell. Changes to row order or count do not affect the link."
+                    : "Paste the formula into an empty Google Sheets cell. The server caches CSV data in memory for at least 60 seconds; Google Sheets may refresh imports on its own schedule."}
                 </p>
               </section>
             ) : null}
