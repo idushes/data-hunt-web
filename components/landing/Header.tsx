@@ -58,26 +58,14 @@ export default function Header() {
                             <span className="hidden sm:inline">GMTRADE</span>
                         </Link>
                         {isAuthenticated ? (
-                            <>
-                                <Link
-                                    href="/account"
-                                    aria-label="Open account"
-                                    className="px-3 sm:px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all border border-white/5 backdrop-blur-sm flex items-center gap-2"
-                                >
-                                    <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                                    <span className="hidden sm:inline">Account</span>
-                                </Link>
-                                <Link
-                                    href="/history"
-                                    aria-label="Open history"
-                                    className="px-3 sm:px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all border border-white/5 backdrop-blur-sm flex items-center gap-2"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-blue-400">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                                    </svg>
-                                    <span className="hidden sm:inline">History</span>
-                                </Link>
-                            </>
+                            <Link
+                                href="/account"
+                                aria-label="Open account"
+                                className="px-3 sm:px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all border border-white/5 backdrop-blur-sm flex items-center gap-2"
+                            >
+                                <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                                <span className="hidden sm:inline">Account</span>
+                            </Link>
                         ) : (
                             <button
                                 onClick={() => setIsAuthModalOpen(true)}

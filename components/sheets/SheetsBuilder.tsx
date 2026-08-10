@@ -414,10 +414,6 @@ export default function SheetsBuilder() {
       defaultSource;
     const nextValues = initialParameterValues(nextSource);
 
-    if (nextSource.usesDataHuntToken) {
-      nextValues.token = localStorage.getItem("data_hunt_token") ?? "";
-    }
-
     setSourceId(nextSource.id);
     setValues(nextValues);
     setRows([]);
@@ -430,16 +426,6 @@ export default function SheetsBuilder() {
 
   function updateValue(key: string, value: string) {
     setValues((current) => ({ ...current, [key]: value }));
-  }
-
-  function useAccountToken() {
-    const token = localStorage.getItem("data_hunt_token") ?? "";
-    if (!token) {
-      setError("Sign in to DataHunt first to use your account token.");
-      return;
-    }
-    updateValue("token", token);
-    setError("");
   }
 
   function validate() {
@@ -614,16 +600,6 @@ export default function SheetsBuilder() {
               </p>
 
               <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-                {source.usesDataHuntToken ? (
-                  <button
-                    type="button"
-                    onClick={useAccountToken}
-                    className="rounded-lg border border-white/10 bg-white/5 px-3.5 py-2 text-sm text-zinc-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
-                  >
-                    Use account token
-                  </button>
-                ) : null}
-
                 <button
                   type="button"
                   onClick={loadTable}

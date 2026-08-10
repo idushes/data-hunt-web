@@ -31,17 +31,7 @@ export type SheetSource = {
   parameters: SheetParameter[];
   requiredAny?: string[];
   keyColumn?: string;
-  usesDataHuntToken?: boolean;
   usesServerCredentials?: boolean;
-};
-
-const dataHuntToken: SheetParameter = {
-  key: "token",
-  label: "DataHunt token",
-  kind: "secret",
-  required: true,
-  placeholder: "Token from Account",
-  help: "Use the button below to insert the current account token.",
 };
 
 const evmAddress: SheetParameter = {
@@ -192,55 +182,6 @@ export const sheetSources: SheetSource[] = [
         kind: "select",
         defaultValue: "1",
         options: [{ label: "Ethereum", value: "1" }],
-      },
-    ],
-  },
-  {
-    id: "debt",
-    name: "DataHunt debt",
-    group: "DataHunt account",
-    description: "Loans and collateral across all addresses in the DataHunt account.",
-    path: "/debt",
-    keyColumn: "id",
-    usesDataHuntToken: true,
-    parameters: [dataHuntToken],
-  },
-  {
-    id: "stability",
-    name: "DataHunt stability",
-    group: "DataHunt account",
-    description: "Value and composition of individual DeFi positions in the account.",
-    path: "/stability",
-    keyColumn: "id",
-    usesDataHuntToken: true,
-    parameters: [dataHuntToken],
-  },
-  {
-    id: "pool",
-    name: "DataHunt liquidity pools",
-    group: "DataHunt account",
-    description: "LP positions, tokens, rewards, and USD value.",
-    path: "/pool",
-    keyColumn: "id",
-    usesDataHuntToken: true,
-    parameters: [dataHuntToken],
-  },
-  {
-    id: "wallet",
-    name: "DataHunt wallet tokens",
-    group: "DataHunt account",
-    description: "Account wallet tokens, prices, and USD value.",
-    path: "/wallet",
-    keyColumn: "id",
-    usesDataHuntToken: true,
-    parameters: [
-      dataHuntToken,
-      {
-        key: "min_usd_value",
-        label: "Minimum value, USD",
-        kind: "number",
-        defaultValue: "0",
-        placeholder: "0",
       },
     ],
   },
