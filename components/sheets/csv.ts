@@ -72,7 +72,9 @@ export function buildImportFormula({
 }: FormulaOptions) {
   const escapedUrl = escapeFormulaText(url);
   if (rows.length === 1 && rows[0]?.length === 1) {
-    return `=INDEX(IMPORTDATA("${escapedUrl}")${separator}1${separator}1)`;
+    const singleCellUrl =
+      stable && stableUrl ? escapeFormulaText(stableUrl) : escapedUrl;
+    return `=INDEX(IMPORTDATA("${singleCellUrl}")${separator}1${separator}1)`;
   }
 
   if (stable && stableUrl) {
@@ -138,4 +140,86 @@ export function buildStableValueUrl({
   });
 
   return valueUrl.toString();
+}
+
+export type ValueResourceRequest = {
+  source: string;
+  key?: string;
+  column?: string;
+  parameters: Record<string, string>;
+};
+
+export type ValueResourceDescriptor = {
+  request: ValueResourceRequest;
+  credentials: Record<string, string>;
+};
+
+type ValueResourceDescriptorOptions = {
+  source: string;
+  sourceUrl: string;
+  rows: string[][];
+  rowIndex: number;
+  columnIndex: number;
+  keyColumn?: string;
+  credentialParameters: string[];
+};
+
+export function buildValueResourceDescriptor({
+  source,
+  sourceUrl,
+  rows,
+  rowIndex,
+  columnIndex,
+  keyColumn,
+  credentialParameters,
+}: ValueResourceDescriptorOptions): ValueResourceDescriptor | null {
+  const isDirectSingleCell =
+    rows.length === 1 &&
+    rows[0]?.length === 1 &&
+    rowIndex === 0 &&
+    columnIndex === 0;
+  const header = rows[0] ?? [];
+  const keyColumnIndex = keyColumn ? header.indexOf(keyColumn) : -1;
+  const key = rows[rowIndex]?.[keyColumnIndex] ?? "";
+  const column = header[columnIndex] ?? "";
+  const isStableCell =
+    rowIndex > 0 && keyColumnIndex >= 0 && key !== "" && column !== "";
+  if (!isDirectSingleCell && !isStableCell) return null;
+
+  const credentialNames = new Set(credentialParameters);
+  const parameters: Record<string, string> = {};
+  const credentials: Record<string, string> = {};
+  const originalUrl = new URL(sourceUrl);
+  originalUrl.searchParams.forEach((value, name) => {
+    if (credentialNames.has(name)) {
+      credentials[name] = value;
+    } else {
+      parameters[name] = value;
+    }
+  });
+
+  return {
+    request: {
+      source,
+      ...(isStableCell ? { key, column } : {}),
+      parameters,
+    },
+    credentials,
+  };
+}
+
+export function buildShortValueUrl({
+  apiBaseUrl,
+  resourceId,
+  credentials,
+}: {
+  apiBaseUrl: string;
+  resourceId: string;
+  credentials: Record<string, string>;
+}) {
+  const url = new URL(`/v/${encodeURIComponent(resourceId)}`, apiBaseUrl);
+  for (const [name, value] of Object.entries(credentials)) {
+    url.searchParams.set(name, value);
+  }
+  return url.toString();
 }

@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildImportFormula,
+  buildShortValueUrl,
   buildStableValueUrl,
+  buildValueResourceDescriptor,
   escapeFormulaText,
   parseCsv,
 } from "./csv";
@@ -115,6 +117,65 @@ describe("buildStableValueUrl", () => {
     expect(url.searchParams.get("capsule")).toBe("dhc1.v1.encrypted");
     expect(url.searchParams.get("key")).toBe("coinbase:total_balance");
     expect(url.searchParams.get("column")).toBe("balance");
+  });
+});
+
+
+describe("short value resources", () => {
+  it("keeps credentials out of the stored resource request", () => {
+    const descriptor = buildValueResourceDescriptor({
+      source: "coinbase",
+      sourceUrl:
+        "https://hunt.data.lisacorp.com/coinbase/balance?" +
+        "capsule=dhc1.v2.encrypted&include_portfolios=true",
+      rows: [
+        ["id", "balance"],
+        ["coinbase:total_balance", "3596.50"],
+      ],
+      rowIndex: 1,
+      columnIndex: 1,
+      keyColumn: "id",
+      credentialParameters: ["capsule"],
+    });
+
+    expect(descriptor).toEqual({
+      request: {
+        source: "coinbase",
+        key: "coinbase:total_balance",
+        column: "balance",
+        parameters: { include_portfolios: "true" },
+      },
+      credentials: { capsule: "dhc1.v2.encrypted" },
+    });
+  });
+
+  it("creates a direct descriptor for an already scalar source", () => {
+    const descriptor = buildValueResourceDescriptor({
+      source: "cmc-price",
+      sourceUrl: "https://hunt.data.lisacorp.com/cmc/price.csv?symbol=ETH",
+      rows: [["2500.12"]],
+      rowIndex: 0,
+      columnIndex: 0,
+      credentialParameters: [],
+    });
+
+    expect(descriptor?.request).toEqual({
+      source: "cmc-price",
+      parameters: { symbol: "ETH" },
+    });
+  });
+
+  it("builds a short URL with credentials as separate parameters", () => {
+    expect(
+      buildShortValueUrl({
+        apiBaseUrl: "https://hunt.data.lisacorp.com",
+        resourceId: "AbCdEf123456",
+        credentials: { capsule: "dhc1.v2.encrypted" },
+      })
+    ).toBe(
+      "https://hunt.data.lisacorp.com/v/AbCdEf123456?" +
+        "capsule=dhc1.v2.encrypted"
+    );
   });
 });
 

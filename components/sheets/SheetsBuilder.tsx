@@ -8,7 +8,9 @@ import {
 } from "@/components/sheets/catalog";
 import {
   buildImportFormula,
+  buildShortValueUrl,
   buildStableValueUrl,
+  buildValueResourceDescriptor,
   parseCsv,
 } from "@/components/sheets/csv";
 import {
@@ -470,7 +472,8 @@ export default function SheetsBuilder() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState<CopyTarget | null>(null);
   const [separator, setSeparator] = useState<"," | ";">(";");
-  const [stableFormula, setStableFormula] = useState(true);
+  const [shortValueUrls, setShortValueUrls] = useState<Record<string, string>>({});
+  const [creatingShortLink, setCreatingShortLink] = useState(false);
   const [coinbaseKeyName, setCoinbaseKeyName] = useState("");
   const [coinbaseKeySecret, setCoinbaseKeySecret] = useState("");
   const [editingCoinbaseKey, setEditingCoinbaseKey] = useState(false);
@@ -490,17 +493,27 @@ export default function SheetsBuilder() {
   const selectedHeader = selectedCell
     ? (rows[0]?.[selectedCell.column] ?? `Column ${selectedCell.column + 1}`)
     : "";
-  const stableValueUrl =
-    selectedCell
-      ? stableValueUrlForCell(selectedCell.row, selectedCell.column)
-      : "";
-  const supportsStableFormula = Boolean(stableValueUrl);
-  const selectedImportUrl =
-    stableFormula && stableValueUrl ? stableValueUrl : loadedUrl;
-
+  const selectedCellKey = selectedCell
+    ? cellResourceCacheKey(selectedCell.row, selectedCell.column)
+    : "";
+  const shortValueUrl = selectedCellKey
+    ? (shortValueUrls[selectedCellKey] ?? "")
+    : "";
+  const supportsShortResource = selectedCell
+    ? Boolean(
+        valueResourceDescriptorForCell(
+          selectedCell.row,
+          selectedCell.column
+        )
+      )
+    : false;
   const formula =
     selectedCell
-      ? formulaForCell(selectedCell.row, selectedCell.column)
+      ? formulaForCell(
+          selectedCell.row,
+          selectedCell.column,
+          shortValueUrl
+        )
       : "";
 
   function stableValueUrlForCell(rowIndex: number, columnIndex: number) {
@@ -516,25 +529,129 @@ export default function SheetsBuilder() {
     });
   }
 
-  function formulaForCell(rowIndex: number, columnIndex: number) {
+  function cellResourceCacheKey(rowIndex: number, columnIndex: number) {
+    return `${loadedUrl}\n${rowIndex}:${columnIndex}`;
+  }
+
+  function valueResourceDescriptorForCell(
+    rowIndex: number,
+    columnIndex: number
+  ) {
+    if (!loadedUrl) return null;
+    return buildValueResourceDescriptor({
+      source: source.id,
+      sourceUrl: loadedUrl,
+      rows,
+      rowIndex,
+      columnIndex,
+      keyColumn: source.keyColumn,
+      credentialParameters: source.parameters
+        .filter((parameter) => parameter.kind === "secret")
+        .map((parameter) => parameter.key),
+    });
+  }
+
+  function formulaForCell(
+    rowIndex: number,
+    columnIndex: number,
+    preferredValueUrl = ""
+  ) {
     if (!loadedUrl) return "";
-    const nextStableUrl = stableValueUrlForCell(rowIndex, columnIndex);
+    const nextStableUrl =
+      preferredValueUrl || stableValueUrlForCell(rowIndex, columnIndex);
     return buildImportFormula({
-      url: loadedUrl,
+      url: preferredValueUrl || loadedUrl,
       stableUrl: nextStableUrl,
       rows,
       rowIndex,
       columnIndex,
       separator,
       keyColumn: source.keyColumn,
-      stable: stableFormula && Boolean(nextStableUrl),
+      stable: Boolean(nextStableUrl),
     });
   }
 
-  function selectCellAndCopyFormula(rowIndex: number, columnIndex: number) {
+  async function createShortValueUrl(rowIndex: number, columnIndex: number) {
+    const descriptor = valueResourceDescriptorForCell(rowIndex, columnIndex);
+    if (!descriptor) return "";
+
+    const response = await fetch(`${API_BASE_URL}/value-resources`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(descriptor.request),
+      cache: "no-store",
+    });
+    const content = await response.text();
+    if (!response.ok) throw new Error(errorMessage(content));
+
+    const payload = JSON.parse(content) as { id?: unknown };
+    if (typeof payload.id !== "string" || !payload.id) {
+      throw new Error("The API did not return a short resource ID.");
+    }
+    return buildShortValueUrl({
+      apiBaseUrl: API_BASE_URL,
+      resourceId: payload.id,
+      credentials: descriptor.credentials,
+    });
+  }
+
+  async function ensureShortValueUrl(rowIndex: number, columnIndex: number) {
+    const key = cellResourceCacheKey(rowIndex, columnIndex);
+    const cached = shortValueUrls[key];
+    if (cached) return cached;
+
+    const nextUrl = await createShortValueUrl(rowIndex, columnIndex);
+    if (nextUrl) {
+      setShortValueUrls((current) => ({ ...current, [key]: nextUrl }));
+    }
+    return nextUrl;
+  }
+
+  async function selectCellAndCopyFormula(
+    rowIndex: number,
+    columnIndex: number
+  ) {
     setSelectedCell({ row: rowIndex, column: columnIndex });
-    const nextFormula = formulaForCell(rowIndex, columnIndex);
-    if (nextFormula) void copyText(nextFormula, "formula");
+    setCreatingShortLink(true);
+    setError("");
+    try {
+      const nextUrl = await ensureShortValueUrl(rowIndex, columnIndex);
+      const nextFormula = formulaForCell(rowIndex, columnIndex, nextUrl);
+      if (nextFormula) await copyText(nextFormula, "formula");
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Unable to create a short value link"
+      );
+    } finally {
+      setCreatingShortLink(false);
+    }
+  }
+
+  async function copySelectedValueUrl() {
+    if (!selectedCell) return;
+    setCreatingShortLink(true);
+    setError("");
+    try {
+      const nextUrl = await ensureShortValueUrl(
+        selectedCell.row,
+        selectedCell.column
+      );
+      const url =
+        nextUrl ||
+        stableValueUrlForCell(selectedCell.row, selectedCell.column) ||
+        loadedUrl;
+      if (url) await copyText(url, "url");
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Unable to create a short value link"
+      );
+    } finally {
+      setCreatingShortLink(false);
+    }
   }
 
   function changeSource(nextSourceId: string) {
@@ -552,9 +669,9 @@ export default function SheetsBuilder() {
     setRows([]);
     setLoadedUrl("");
     setSelectedCell(null);
+    setShortValueUrls({});
     setError("");
     setCopied(null);
-    setStableFormula(true);
     setCoinbaseKeyName("");
     setCoinbaseKeySecret("");
     setEditingCoinbaseKey(false);
@@ -605,6 +722,7 @@ export default function SheetsBuilder() {
     setError("");
     setRows([]);
     setSelectedCell(null);
+    setShortValueUrls({});
     setCopied(null);
 
     try {
@@ -878,8 +996,8 @@ export default function SheetsBuilder() {
             <div className="mt-3 flex flex-col gap-3 border-t border-white/10 pt-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="max-w-2xl text-[11px] leading-4 text-zinc-600">
                 {source.id === "coinbase"
-                  ? "The encrypted access key is stored only in this browser and included in the formula. Anyone with the formula can use it, so do not share the sheet."
-                  : "Tokens and keys will be included in the formula URL. Do not publish or share access to a sheet containing these formulas."}
+                  ? "The encrypted access key stays in this browser. It is added only to the short formula URL and is never stored with the resource."
+                  : "Tokens and keys are added only to the formula URL and are never stored with the resource. Do not share sheets containing credentials."}
               </p>
 
               <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
@@ -918,7 +1036,14 @@ export default function SheetsBuilder() {
                 </div>
                 {rows.length > 0 ? (
                   <div className="flex items-center gap-2 text-xs text-zinc-500">
-                    {copied === "formula" ? (
+                    {creatingShortLink ? (
+                      <>
+                        <span className="text-violet-300">
+                          Creating short link…
+                        </span>
+                        <span className="text-zinc-700">•</span>
+                      </>
+                    ) : copied === "formula" ? (
                       <>
                         <span className="text-emerald-300">
                           Formula copied
@@ -958,7 +1083,10 @@ export default function SheetsBuilder() {
                                 <button
                                   type="button"
                                   onClick={() =>
-                                    selectCellAndCopyFormula(rowIndex, columnIndex)
+                                    void selectCellAndCopyFormula(
+                                      rowIndex,
+                                      columnIndex
+                                    )
                                   }
                                   className={`block min-w-full whitespace-nowrap px-3 py-2 text-left outline-none transition ${
                                     rowIndex === 0
@@ -1017,26 +1145,8 @@ export default function SheetsBuilder() {
                   </button>
                 </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  {supportsStableFormula ? (
-                    <label className="text-xs text-zinc-400">
-                      Value retrieval method
-                      <select
-                        value={stableFormula ? "stable" : "position"}
-                        onChange={(event) =>
-                          setStableFormula(event.target.value === "stable")
-                        }
-                        className={parameterInputClass()}
-                      >
-                        <option value="stable">
-                          Stable value route by ID
-                        </option>
-                        <option value="position">By row and column number</option>
-                      </select>
-                    </label>
-                  ) : null}
-
-                  <label className="text-xs text-zinc-400">
+                <div className="mt-4 max-w-sm">
+                  <label className="block text-xs text-zinc-400">
                     Argument separator in your Sheets locale
                     <select
                       value={separator}
@@ -1065,30 +1175,41 @@ export default function SheetsBuilder() {
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                   <button
                     type="button"
-                    onClick={() => copyText(formula, "formula")}
+                    onClick={() =>
+                      selectedCell
+                        ? void selectCellAndCopyFormula(
+                            selectedCell.row,
+                            selectedCell.column
+                          )
+                        : undefined
+                    }
+                    disabled={creatingShortLink}
                     className="flex-1 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-violet-100"
                   >
-                    {copied === "formula"
+                    {creatingShortLink
+                      ? "Creating short link…"
+                      : copied === "formula"
                       ? "Formula copied"
                       : "Copy Google Sheets formula"}
                   </button>
                   <button
                     type="button"
-                    onClick={() => copyText(selectedImportUrl, "url")}
+                    onClick={() => void copySelectedValueUrl()}
+                    disabled={creatingShortLink}
                     className="rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-zinc-300 transition hover:bg-white/10 hover:text-white"
                   >
                     {copied === "url"
                       ? "URL copied"
-                      : stableFormula && stableValueUrl
-                        ? "Copy value URL"
-                        : "Copy CSV URL"}
+                      : supportsShortResource
+                        ? "Copy short value URL"
+                        : "Copy legacy URL"}
                   </button>
                 </div>
 
                 <p className="mt-3 text-xs leading-4 text-zinc-500">
-                  {stableFormula && stableValueUrl
-                    ? "The value route finds the row by its stable ID on every request and returns only that cell. Changes to row order or count do not affect the link."
-                    : "Paste the formula into an empty Google Sheets cell. The server caches CSV data in memory for at least 60 seconds; Google Sheets may refresh imports on its own schedule."}
+                  {supportsShortResource
+                    ? "The formula uses a short resource ID. Wallet and network parameters are stored once; credentials remain a separate URL parameter and are never saved with the resource."
+                    : "This cell cannot use a stable resource ID, so the compatible legacy URL is used."}
                 </p>
               </section>
             ) : null}
