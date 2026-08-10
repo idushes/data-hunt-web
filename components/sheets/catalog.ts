@@ -249,13 +249,13 @@ export const sheetSources: SheetSource[] = [
       "Direct USDC and USDT balances for Ethereum and Solana wallets, including zero balances.",
     path: "/stablecoins/balances.csv",
     keyColumn: "balance_id",
-    requiredAny: ["address", "wallet"],
+    requiredAny: ["address", "wallet", "tron_address"],
     parameters: [
       {
         ...evmAddress,
         label: "EVM address",
         required: false,
-        help: "You can provide an EVM address, a Solana address, or both.",
+        help: "You can provide EVM, Solana, or TRON addresses in any combination.",
       },
       {
         key: "chain_id",
@@ -271,7 +271,14 @@ export const sheetSources: SheetSource[] = [
       {
         ...solanaWallet,
         required: false,
-        help: "You can provide an EVM address, a Solana address, or both.",
+        help: "You can provide EVM, Solana, or TRON addresses in any combination.",
+      },
+      {
+        key: "tron_address",
+        label: "TRON address",
+        kind: "text",
+        placeholder: "T…",
+        help: "Optional TRON address for USDT and legacy USDC balances.",
       },
     ],
   },

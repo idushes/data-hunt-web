@@ -23,7 +23,7 @@ type SelectedCell = {
 
 type CopyTarget = "formula" | "value" | "url";
 
-type AddressKind = "evm" | "solana";
+type AddressKind = "evm" | "solana" | "tron";
 
 type SavedAddress = {
   id: string;
@@ -67,7 +67,9 @@ function parseSavedAddresses(content: string): SavedAddress[] {
       const candidate = item as Partial<SavedAddress>;
       return (
         typeof candidate.id === "string" &&
-        (candidate.kind === "evm" || candidate.kind === "solana") &&
+        (candidate.kind === "evm" ||
+          candidate.kind === "solana" ||
+          candidate.kind === "tron") &&
         typeof candidate.label === "string" &&
         typeof candidate.value === "string"
       );
@@ -94,6 +96,7 @@ function storeSavedAddresses(addresses: SavedAddress[]) {
 function addressKind(parameter: SheetParameter): AddressKind | null {
   if (parameter.key === "wallet") return "solana";
   if (parameter.key === "address") return "evm";
+  if (parameter.key === "tron_address") return "tron";
   return null;
 }
 
@@ -105,6 +108,7 @@ function normalizedAddress(value: string, kind: AddressKind) {
 function validAddress(value: string, kind: AddressKind) {
   const trimmed = value.trim();
   if (kind === "evm") return /^0x[0-9a-fA-F]{40}$/.test(trimmed);
+  if (kind === "tron") return /^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(trimmed);
   return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(trimmed);
 }
 
@@ -239,7 +243,9 @@ function SavedAddressPicker({
       onError(
         kind === "evm"
           ? "Enter a valid EVM address before saving."
-          : "Enter a valid Solana address before saving."
+          : kind === "tron"
+            ? "Enter a valid TRON address before saving."
+            : "Enter a valid Solana address before saving."
       );
       return;
     }
@@ -288,7 +294,11 @@ function SavedAddressPicker({
       <div className="flex gap-2">
         <select
           aria-label={
-            kind === "evm" ? "Saved EVM addresses" : "Saved Solana addresses"
+            kind === "evm"
+              ? "Saved EVM addresses"
+              : kind === "tron"
+                ? "Saved TRON addresses"
+                : "Saved Solana addresses"
           }
           value={selectedAddress?.id ?? ""}
           onChange={(event) => selectAddress(event.target.value)}
