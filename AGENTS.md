@@ -46,6 +46,14 @@ Guidance for coding agents working in this repository.
 - Keep browser-only APIs such as `localStorage` inside client components and effects.
 - Do not commit secrets, API keys, tokens, wallet data, or local `.env*` files.
 
+## Landing Page Communication
+
+- When adding or materially changing user-facing functionality, update the landing page within the same task.
+- This includes new data sources, integrations, supported platforms or blockchains, workflows, and capabilities that users can select or use.
+- Present the change concisely and visually, emphasizing the user benefit instead of implementation details. Keep the landing page easy to understand with minimal reading.
+- Only advertise functionality that is actually implemented and verified. Internal refactors, maintenance, and fixes that do not change visible capabilities do not require a landing-page update.
+- Verify that landing-page claims match the deployed product before completing the task.
+
 ## Verification
 
 - Run `npm run lint` for code changes.
