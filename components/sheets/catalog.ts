@@ -204,6 +204,16 @@ export const sheetSources: SheetSource[] = [
     ],
   },
   {
+    id: "lido",
+    name: "Lido staking",
+    group: "DeFi",
+    description:
+      "stETH, wstETH, stETH equivalents, staking APR, and unclaimed withdrawals.",
+    path: "/lido/positions.csv",
+    keyColumn: "position_id",
+    parameters: [evmAddress],
+  },
+  {
     id: "uniswap",
     name: "Uniswap V3 positions",
     group: "DeFi",
