@@ -23,12 +23,21 @@ export const metadata: Metadata = {
       "Turn live crypto positions into dependable Google Sheets cells.",
     type: "website",
     url: "/",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "DataHunt — crypto data straight to Google Sheets",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "DataHunt — Live crypto data for Google Sheets",
     description:
       "Turn live crypto positions into dependable Google Sheets cells.",
+    images: ["/og.png"],
   },
   icons: {
     icon: [

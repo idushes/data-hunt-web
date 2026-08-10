@@ -6,7 +6,7 @@ export default function Footer() {
             <div className="mx-auto flex max-w-7xl flex-col gap-6 px-6 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <p className="font-semibold text-white">DataHunt</p>
-                    <p className="mt-1 text-sm text-zinc-600">Live crypto data for the spreadsheet you control.</p>
+                    <p className="mt-1 text-sm text-zinc-600">Crypto → Sheets</p>
                 </div>
                 <div className="flex flex-wrap gap-6 text-sm text-zinc-500">
                     <Link href="/sheets" className="transition-colors hover:text-white">Sheets helper</Link>

@@ -1,85 +1,42 @@
-const sourceGroups = [
-  {
-    label: "Onchain DeFi",
-    title: "Positions, debt, fees, and rewards",
-    description:
-      "Read supplied assets, loans, health factors, LP composition, claimable fees, and farming rewards directly into your workbook.",
-    sources: ["Fluid", "Aave", "Uniswap V3", "Stake DAO"],
-    accent: "violet",
-  },
-  {
-    label: "Wallets & market",
-    title: "The balances around your positions",
-    description:
-      "Keep Ethereum and Solana stablecoin balances beside current market prices without maintaining another portfolio app.",
-    sources: ["USDC / USDT", "Ethereum", "Solana", "CoinMarketCap"],
-    accent: "blue",
-  },
-  {
-    label: "Solana",
-    title: "Vaults, assets, and perpetuals",
-    description:
-      "Bring Kamino Earn, Private Credit, kVaults, GMTrade assets, and open perpetual positions into the same sheet.",
-    sources: ["Kamino", "kVaults", "GMTrade", "Perpetuals"],
-    accent: "emerald",
-  },
-  {
-    label: "Trading accounts",
-    title: "Exchange equity in the same view",
-    description:
-      "Combine account values, collateral, withdrawable balances, and portfolio positions with your onchain holdings.",
-    sources: ["Coinbase", "Hyperliquid", "Lighter", "Paradex"],
-    accent: "amber",
-  },
+const sources = [
+  { mark: "FL", name: "Fluid", tone: "from-blue-500 to-cyan-300" },
+  { mark: "A", name: "Aave", tone: "from-violet-500 to-fuchsia-400" },
+  { mark: "U", name: "Uniswap", tone: "from-pink-500 to-rose-400" },
+  { mark: "SD", name: "Stake DAO", tone: "from-red-500 to-orange-400" },
+  { mark: "Ξ", name: "Ethereum", tone: "from-slate-500 to-indigo-300" },
+  { mark: "S", name: "Solana", tone: "from-emerald-400 to-violet-500" },
+  { mark: "$", name: "USDC / USDT", tone: "from-blue-500 to-emerald-400" },
+  { mark: "K", name: "Kamino", tone: "from-orange-500 to-amber-300" },
+  { mark: "GM", name: "GMTrade", tone: "from-emerald-500 to-lime-300" },
+  { mark: "C", name: "Coinbase", tone: "from-blue-600 to-blue-400" },
+  { mark: "HL", name: "Hyperliquid", tone: "from-cyan-400 to-emerald-300" },
+  { mark: "L", name: "Lighter", tone: "from-zinc-400 to-white" },
+  { mark: "P", name: "Paradex", tone: "from-orange-500 to-violet-500" },
+  { mark: "CMC", name: "CoinMarketCap", tone: "from-indigo-500 to-blue-300" },
 ];
-
-const accents = {
-  violet: "border-violet-400/15 bg-violet-400/[0.06] text-violet-200",
-  blue: "border-blue-400/15 bg-blue-400/[0.06] text-blue-200",
-  emerald: "border-emerald-400/15 bg-emerald-400/[0.06] text-emerald-200",
-  amber: "border-amber-400/15 bg-amber-400/[0.06] text-amber-200",
-};
 
 export default function Zones() {
   return (
-    <section id="sources" className="relative py-24 sm:py-28">
+    <section id="sources" className="relative py-20 sm:py-24">
       <div className="mx-auto max-w-7xl px-6">
-        <div className="max-w-3xl">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-violet-300">Data sources</p>
-          <h2 className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl">
-            One helper for the numbers scattered across your portfolio.
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <h2 className="text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl">
+            All your crypto. One sheet.
           </h2>
-          <p className="mt-5 text-lg leading-8 text-zinc-400">
-            Data Hunt normalizes different protocols and APIs into simple tables,
-            so your spreadsheet can stay the single place where you make decisions.
-          </p>
+          <p className="text-sm text-zinc-500">DeFi · Wallets · Solana · Exchanges · Prices</p>
         </div>
 
-        <div className="mt-14 grid gap-4 md:grid-cols-2">
-          {sourceGroups.map((group) => (
-            <article
-              key={group.label}
-              className="group rounded-2xl border border-white/10 bg-white/[0.025] p-6 transition hover:border-white/20 hover:bg-white/[0.04] sm:p-8"
+        <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
+          {sources.map((source) => (
+            <div
+              key={source.name}
+              className="group flex min-h-36 flex-col justify-between rounded-2xl border border-white/10 bg-white/[0.025] p-4 transition hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.05]"
             >
-              <div className="flex items-start justify-between gap-6">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">{group.label}</p>
-                  <h3 className="mt-3 text-2xl font-semibold tracking-tight text-white">{group.title}</h3>
-                </div>
-                <span className="font-mono text-xs text-zinc-700">0{sourceGroups.indexOf(group) + 1}</span>
+              <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${source.tone} text-sm font-black text-black shadow-lg shadow-black/30`}>
+                {source.mark}
               </div>
-              <p className="mt-4 max-w-xl leading-7 text-zinc-400">{group.description}</p>
-              <div className="mt-7 flex flex-wrap gap-2">
-                {group.sources.map((source) => (
-                  <span
-                    key={source}
-                    className={`rounded-full border px-3 py-1.5 text-xs ${accents[group.accent as keyof typeof accents]}`}
-                  >
-                    {source}
-                  </span>
-                ))}
-              </div>
-            </article>
+              <p className="mt-6 text-sm font-medium text-zinc-200">{source.name}</p>
+            </div>
           ))}
         </div>
       </div>
