@@ -147,6 +147,29 @@ export const sheetSources: SheetSource[] = [
     ],
   },
   {
+    id: "compound",
+    name: "Compound III positions",
+    group: "DeFi",
+    description:
+      "Compound III supplies, borrows, collateral, APY, USD values, and liquidation status.",
+    path: "/compound/positions.csv",
+    keyColumn: "position_id",
+    parameters: [
+      evmAddress,
+      {
+        key: "chain_id",
+        label: "Network",
+        kind: "select",
+        defaultValue: "1",
+        options: [
+          { label: "Ethereum", value: "1" },
+          { label: "Arbitrum", value: "42161" },
+          { label: "Base", value: "8453" },
+        ],
+      },
+    ],
+  },
+  {
     id: "uniswap",
     name: "Uniswap V3 positions",
     group: "DeFi",
