@@ -83,4 +83,18 @@ describe("Sheets source catalog contract", () => {
       "8453",
     ]);
   });
+
+  it("requires an encrypted browser-held access key for Coinbase", () => {
+    const coinbase = sheetSources.find((source) => source.id === "coinbase");
+    const capsule = coinbase?.parameters.find(
+      (parameter) => parameter.key === "capsule"
+    );
+
+    expect(capsule).toMatchObject({ kind: "secret", required: true });
+    expect(
+      coinbase?.parameters.some((parameter) =>
+        ["token", "key_name", "key_secret"].includes(parameter.key)
+      )
+    ).toBe(false);
+  });
 });

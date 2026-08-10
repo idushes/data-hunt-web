@@ -92,6 +92,30 @@ describe("buildStableValueUrl", () => {
       })
     ).toBe("");
   });
+
+  it("forwards the encrypted Coinbase access key to the stable value route", () => {
+    const coinbaseRows = [
+      ["id", "name", "balance"],
+      ["coinbase:total_balance", "total_balance", "3596.50"],
+    ];
+    const result = buildStableValueUrl({
+      apiBaseUrl: "https://hunt.data.lisacorp.com",
+      source: "coinbase",
+      sourceUrl:
+        "https://hunt.data.lisacorp.com/coinbase/balance?" +
+        "capsule=dhc1.v1.encrypted&include_portfolios=true",
+      rows: coinbaseRows,
+      rowIndex: 1,
+      columnIndex: 2,
+      keyColumn: "id",
+    });
+    const url = new URL(result);
+
+    expect(url.pathname).toBe("/value");
+    expect(url.searchParams.get("capsule")).toBe("dhc1.v1.encrypted");
+    expect(url.searchParams.get("key")).toBe("coinbase:total_balance");
+    expect(url.searchParams.get("column")).toBe("balance");
+  });
 });
 
 

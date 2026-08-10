@@ -53,7 +53,7 @@ function PasteVisual() {
 const benefits = [
   { icon: "⌁", title: "Stable cells", note: "Row order safe" },
   { icon: "60", title: "60s cache", note: "Fewer requests" },
-  { icon: "⌂", title: "Local presets", note: "This browser only" },
+  { icon: "🔒", title: "Private Coinbase", note: "Browser-held key" },
   { icon: "CSV", title: "Plain data", note: "Easy to inspect" },
 ];
 

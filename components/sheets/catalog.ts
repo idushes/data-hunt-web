@@ -31,7 +31,6 @@ export type SheetSource = {
   parameters: SheetParameter[];
   requiredAny?: string[];
   keyColumn?: string;
-  usesServerCredentials?: boolean;
 };
 
 const evmAddress: SheetParameter = {
@@ -488,8 +487,13 @@ export const sheetSources: SheetSource[] = [
     description: "Coinbase App and INTX portfolio balances and positions.",
     path: "/coinbase/balance",
     keyColumn: "id",
-    usesServerCredentials: true,
     parameters: [
+      {
+        key: "capsule",
+        label: "Encrypted Coinbase access key",
+        kind: "secret",
+        required: true,
+      },
       {
         key: "include_zero",
         label: "Include zero balances",
