@@ -19,6 +19,19 @@ interface AddressInfo {
     can_auth: boolean;
 }
 
+interface ChainInfo {
+    id: string;
+    name: string;
+}
+
+interface WindowWithEthereum extends Window {
+    ethereum?: ethers.Eip1193Provider;
+}
+
+function errorMessage(error: unknown) {
+    return error instanceof Error ? error.message : String(error);
+}
+
 export default function AccountPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
@@ -26,78 +39,14 @@ export default function AccountPage() {
     const [tokens, setTokens] = useState<TokenInfo[]>([]);
     const [addresses, setAddresses] = useState<AddressInfo[]>([]);
     const [newAddress, setNewAddress] = useState('');
-    const [chains, setChains] = useState<{ id: string, name: string }[]>([]);
+    const [chains, setChains] = useState<ChainInfo[]>([]);
     const [selectedNetwork, setSelectedNetwork] = useState('eth');
     const [status, setStatus] = useState<string>('');
     const [account, setAccount] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
     const [dataLoading, setDataLoading] = useState(true);
 
-    // Initial check and fetch
-    useEffect(() => {
-        const storedToken = localStorage.getItem('data_hunt_token');
-        if (!storedToken) {
-            router.push('/');
-            return;
-        }
-        setAccessToken(storedToken);
-        setLoading(false);
-
-        // Fetch user's current wallet to check against
-        const checkWallet = async () => {
-            if (typeof window !== 'undefined' && (window as any).ethereum) {
-                try {
-                    const provider = new ethers.BrowserProvider((window as any).ethereum);
-                    const accounts = await provider.send("eth_accounts", []);
-                    if (accounts.length > 0) {
-                        setAccount(accounts[0]);
-                    }
-                } catch (e) {
-                    console.error("Failed to check wallet connection", e);
-                }
-            }
-        };
-        checkWallet();
-
-        // Fetch Chains
-        const fetchChains = async () => {
-            try {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://0.0.0.0:8111';
-                const response = await fetch(`${apiUrl}/chains`);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (Array.isArray(data)) {
-                        setChains(data.sort((a, b) => a.name.localeCompare(b.name)));
-                    } else if (typeof data === 'object') {
-                        const chainList = Object.entries(data).map(([k, v]) => {
-                            if (typeof v === 'object' && v !== null && 'name' in v) {
-                                return { id: k, name: (v as any).name };
-                            }
-                            return { id: k, name: String(v) };
-                        });
-                        setChains(chainList.sort((a, b) => a.name.localeCompare(b.name)));
-                    }
-                }
-            } catch (e) {
-                console.error("Failed to fetch chains", e);
-            }
-        };
-        fetchChains();
-
-    }, [router]);
-
-    // Data fetching once token is set
-    useEffect(() => {
-        if (accessToken) {
-            setDataLoading(true);
-            Promise.all([
-                fetchTokens(accessToken),
-                fetchAddresses(accessToken),
-            ]).finally(() => setDataLoading(false));
-        }
-    }, [accessToken]);
-
-    const fetchTokens = async (token: string) => {
+    async function fetchTokens(token: string) {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://0.0.0.0:8111';
             const response = await fetch(`${apiUrl}/web3/tokens`, {
@@ -110,9 +59,9 @@ export default function AccountPage() {
         } catch (error) {
             console.error('Failed to fetch tokens', error);
         }
-    };
+    }
 
-    const fetchAddresses = async (token: string) => {
+    async function fetchAddresses(token: string) {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://0.0.0.0:8111';
             const response = await fetch(`${apiUrl}/web3/addresses`, {
@@ -125,7 +74,81 @@ export default function AccountPage() {
         } catch (error) {
             console.error('Failed to fetch addresses', error);
         }
-    };
+    }
+
+    // Initial check and fetch
+    useEffect(() => {
+        const initialize = async () => {
+            const storedToken = localStorage.getItem('data_hunt_token');
+            if (!storedToken) {
+                router.push('/');
+                return;
+            }
+
+            await Promise.resolve();
+            setAccessToken(storedToken);
+            setLoading(false);
+
+            // Fetch user's current wallet to check against
+            const checkWallet = async () => {
+                const ethereum = (window as WindowWithEthereum).ethereum;
+                if (!ethereum) return;
+                try {
+                    const provider = new ethers.BrowserProvider(ethereum);
+                    const accounts = await provider.send("eth_accounts", []);
+                    if (accounts.length > 0) {
+                        setAccount(accounts[0]);
+                    }
+                } catch (e) {
+                    console.error("Failed to check wallet connection", e);
+                }
+            };
+
+            // Fetch Chains
+            const fetchChains = async () => {
+                try {
+                    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://0.0.0.0:8111';
+                    const response = await fetch(`${apiUrl}/chains`);
+                    if (response.ok) {
+                        const data: unknown = await response.json();
+                        if (Array.isArray(data)) {
+                            const chainList = data.flatMap((item): ChainInfo[] => {
+                                if (!item || typeof item !== 'object') return [];
+                                const candidate = item as { id?: unknown; name?: unknown };
+                                if (
+                                    typeof candidate.id !== 'string' ||
+                                    typeof candidate.name !== 'string'
+                                ) return [];
+                                return [{ id: candidate.id, name: candidate.name }];
+                            });
+                            setChains(chainList.sort((a, b) => a.name.localeCompare(b.name)));
+                        } else if (data && typeof data === 'object') {
+                            const chainList = Object.entries(data).map(([k, v]) => {
+                                if (typeof v === 'object' && v !== null && 'name' in v) {
+                                    const name = (v as { name?: unknown }).name;
+                                    return { id: k, name: typeof name === 'string' ? name : String(name) };
+                                }
+                                return { id: k, name: String(v) };
+                            });
+                            setChains(chainList.sort((a, b) => a.name.localeCompare(b.name)));
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch chains", e);
+                }
+            };
+
+            await Promise.all([
+                checkWallet(),
+                fetchChains(),
+                fetchTokens(storedToken),
+                fetchAddresses(storedToken),
+            ]);
+            setDataLoading(false);
+        };
+
+        void initialize();
+    }, [router]);
 
     const logout = async () => {
         if (accessToken) {
@@ -135,7 +158,7 @@ export default function AccountPage() {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${accessToken}` }
                 });
-            } catch (ignore) { }
+            } catch { }
         }
         localStorage.removeItem('data_hunt_token');
         router.push('/');
@@ -172,8 +195,8 @@ export default function AccountPage() {
                 const data = await response.json();
                 setStatus(`Failed to link: ${data.detail || 'Unknown error'}`);
             }
-        } catch (error: any) {
-            setStatus(`Error: ${error.message}`);
+        } catch (error: unknown) {
+            setStatus(`Error: ${errorMessage(error)}`);
         }
     };
 
@@ -188,7 +211,12 @@ export default function AccountPage() {
                 // Check if current wallet matches target
                 if (!account || account.toLowerCase() !== targetAddress.toLowerCase()) {
                     // Try switch/connect
-                    const provider = new ethers.BrowserProvider((window as any).ethereum);
+                    const ethereum = (window as WindowWithEthereum).ethereum;
+                    if (!ethereum) {
+                        setStatus('No browser wallet found');
+                        return;
+                    }
+                    const provider = new ethers.BrowserProvider(ethereum);
                     const accounts = await provider.send("eth_requestAccounts", []);
                     if (accounts.length > 0 && accounts[0].toLowerCase() === targetAddress.toLowerCase()) {
                         setAccount(accounts[0]);
@@ -199,7 +227,12 @@ export default function AccountPage() {
                 }
 
                 setStatus('Signing authorization...');
-                const provider = new ethers.BrowserProvider((window as any).ethereum);
+                const ethereum = (window as WindowWithEthereum).ethereum;
+                if (!ethereum) {
+                    setStatus('No browser wallet found');
+                    return;
+                }
+                const provider = new ethers.BrowserProvider(ethereum);
                 const signer = await provider.getSigner();
 
                 // Double check signer
@@ -235,8 +268,8 @@ export default function AccountPage() {
                 const data = await response.json();
                 setStatus(`Failed: ${data.detail}`);
             }
-        } catch (error: any) {
-            setStatus(`Error: ${error.message}`);
+        } catch (error: unknown) {
+            setStatus(`Error: ${errorMessage(error)}`);
         }
     };
 
@@ -366,7 +399,7 @@ export default function AccountPage() {
                                                 isCurrentSession = true;
                                             }
                                         }
-                                    } catch (e) { }
+                                    } catch { }
 
                                     return (
                                         <div key={addr.id} className="p-4 rounded-xl bg-zinc-950/50 border border-white/5 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
