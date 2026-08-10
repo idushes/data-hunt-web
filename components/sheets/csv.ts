@@ -212,14 +212,17 @@ export function buildShortValueUrl({
   apiBaseUrl,
   resourceId,
   credentials,
+  userToken,
 }: {
   apiBaseUrl: string;
   resourceId: string;
   credentials: Record<string, string>;
+  userToken?: string;
 }) {
   const url = new URL(`/v/${encodeURIComponent(resourceId)}`, apiBaseUrl);
   for (const [name, value] of Object.entries(credentials)) {
     url.searchParams.set(name, value);
   }
+  if (userToken) url.searchParams.set("auth_token", userToken);
   return url.toString();
 }

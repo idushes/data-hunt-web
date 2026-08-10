@@ -10,7 +10,11 @@ interface TokenInfo {
     current: boolean;
     created_at: number;
     is_active: boolean;
+    purpose: 'session' | 'sheets';
 }
+
+const SHEETS_ACCESS_STORAGE_KEY = 'datahunt:sheets:access:v1';
+const AUTH_CHANGED_EVENT = 'data-hunt-auth';
 
 interface AddressInfo {
     id: number;
@@ -288,11 +292,15 @@ export default function AccountPage() {
 
             if (response.ok) {
                 const token = tokens.find(t => t.id === tokenId);
+                if (token?.purpose === 'sheets') {
+                    localStorage.removeItem(SHEETS_ACCESS_STORAGE_KEY);
+                    window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
+                }
                 if (token && token.current) {
                     logout();
                 } else {
                     fetchTokens(accessToken);
-                    setStatus('Session deactivated');
+                    setStatus(token?.purpose === 'sheets' ? 'Sheets access revoked' : 'Session deactivated');
                     setTimeout(() => setStatus(''), 3000);
                 }
             }
@@ -478,6 +486,9 @@ export default function AccountPage() {
                                         <div className="flex items-center gap-2 mb-1">
                                             {token.current && (
                                                 <span className="text-[10px] font-bold text-blue-400 bg-blue-900/20 px-1.5 py-0.5 rounded">CURRENT SESSION</span>
+                                            )}
+                                            {token.purpose === 'sheets' && (
+                                                <span className="text-[10px] font-bold text-violet-300 bg-violet-900/20 px-1.5 py-0.5 rounded">SHEETS ACCESS</span>
                                             )}
                                             <span className="text-xs text-zinc-500">
                                                 {new Date(token.created_at * 1000).toLocaleString()}

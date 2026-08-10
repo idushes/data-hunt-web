@@ -44,6 +44,7 @@ export default function Hero() {
               "Saved + authorized wallets",
               "60s cache",
               "Short reusable links",
+              "Per-user limits",
             ].map((item) => (
               <span key={item} className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5">
                 {item}
@@ -95,7 +96,7 @@ export default function Hero() {
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-400 text-lg font-bold text-black">✓</div>
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-emerald-200">Formula copied</p>
-                  <p className="mt-1 truncate font-mono text-[10px] text-zinc-500">=IMPORTDATA(&quot;…/v/8qL2mZ7pR4Kd&quot;)</p>
+                  <p className="mt-1 truncate font-mono text-[10px] text-zinc-500">=IMPORTDATA(&quot;…/v/8qL2mZ7pR4Kd?auth_token=•••&quot;)</p>
                 </div>
               </div>
             </div>

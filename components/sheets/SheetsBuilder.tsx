@@ -43,6 +43,82 @@ const SAVED_ADDRESSES_EVENT = "datahunt:sheets:saved-addresses-changed";
 const AUTH_CHANGED_EVENT = "data-hunt-auth";
 const EMPTY_SAVED_ADDRESSES = "[]";
 const COINBASE_CAPSULE_STORAGE_KEY = "datahunt:coinbase:capsule:v1";
+const SHEETS_ACCESS_STORAGE_KEY = "datahunt:sheets:access:v1";
+
+type StoredSheetsAccess = {
+  accountId: string;
+  token: string;
+};
+
+function jwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const encoded = token.split(".")[1];
+    if (!encoded) return null;
+    const base64 = encoded.replaceAll("-", "+").replaceAll("_", "/");
+    const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+    const parsed: unknown = JSON.parse(atob(base64 + padding));
+    return parsed && typeof parsed === "object"
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function storedSheetsAccess(): StoredSheetsAccess | null {
+  try {
+    const content = localStorage.getItem(SHEETS_ACCESS_STORAGE_KEY);
+    if (!content) return null;
+    const parsed: unknown = JSON.parse(content);
+    if (!parsed || typeof parsed !== "object") return null;
+    const candidate = parsed as Partial<StoredSheetsAccess>;
+    if (
+      typeof candidate.accountId !== "string" ||
+      typeof candidate.token !== "string"
+    ) {
+      return null;
+    }
+    return { accountId: candidate.accountId, token: candidate.token };
+  } catch {
+    return null;
+  }
+}
+
+async function sheetsAccessToken(loginToken: string) {
+  const payload = jwtPayload(loginToken);
+  const accountId = typeof payload?.sub === "string" ? payload.sub : "";
+  if (!accountId) return "";
+
+  const stored = storedSheetsAccess();
+  if (stored?.accountId === accountId) return stored.token;
+
+  const expiresAt = typeof payload?.exp === "number" ? payload.exp : 0;
+  if (expiresAt <= Date.now() / 1000) return "";
+
+  const response = await fetch(`${API_BASE_URL}/web3/sheets-token`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${loginToken}` },
+    cache: "no-store",
+  });
+  const content = await response.text();
+  if (!response.ok) throw new Error(errorMessage(content));
+  const result = JSON.parse(content) as {
+    access_token?: unknown;
+    account_id?: unknown;
+  };
+  if (
+    typeof result.access_token !== "string" ||
+    typeof result.account_id !== "string"
+  ) {
+    throw new Error("The API did not return a Sheets access token.");
+  }
+
+  localStorage.setItem(
+    SHEETS_ACCESS_STORAGE_KEY,
+    JSON.stringify({ accountId: result.account_id, token: result.access_token })
+  );
+  return result.access_token;
+}
 
 function savedAddressesSnapshot() {
   return localStorage.getItem(SAVED_ADDRESSES_KEY) ?? EMPTY_SAVED_ADDRESSES;
@@ -479,6 +555,28 @@ export default function SheetsBuilder() {
   const [editingCoinbaseKey, setEditingCoinbaseKey] = useState(false);
   const [generatingCoinbaseKey, setGeneratingCoinbaseKey] = useState(false);
 
+  useEffect(() => {
+    function resetShortLinks() {
+      setShortValueUrls({});
+    }
+
+    function handleStorage(event: StorageEvent) {
+      if (
+        event.key === "data_hunt_token" ||
+        event.key === SHEETS_ACCESS_STORAGE_KEY
+      ) {
+        resetShortLinks();
+      }
+    }
+
+    window.addEventListener(AUTH_CHANGED_EVENT, resetShortLinks);
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener(AUTH_CHANGED_EVENT, resetShortLinks);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
+
   const source =
     sheetSources.find((candidate) => candidate.id === sourceId) ?? defaultSource;
 
@@ -575,12 +673,30 @@ export default function SheetsBuilder() {
     const descriptor = valueResourceDescriptorForCell(rowIndex, columnIndex);
     if (!descriptor) return "";
 
-    const response = await fetch(`${API_BASE_URL}/value-resources`, {
+    const loginToken = localStorage.getItem("data_hunt_token") ?? "";
+    const loginPayload = jwtPayload(loginToken);
+    const expiresAt =
+      typeof loginPayload?.exp === "number" ? loginPayload.exp : 0;
+    const resourceHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (loginToken && expiresAt > Date.now() / 1000) {
+      resourceHeaders.Authorization = `Bearer ${loginToken}`;
+    }
+
+    const resourceRequest = fetch(`${API_BASE_URL}/value-resources`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: resourceHeaders,
       body: JSON.stringify(descriptor.request),
       cache: "no-store",
     });
+    const tokenRequest = loginToken
+      ? sheetsAccessToken(loginToken)
+      : Promise.resolve("");
+    const [response, userToken] = await Promise.all([
+      resourceRequest,
+      tokenRequest,
+    ]);
     const content = await response.text();
     if (!response.ok) throw new Error(errorMessage(content));
 
@@ -592,6 +708,7 @@ export default function SheetsBuilder() {
       apiBaseUrl: API_BASE_URL,
       resourceId: payload.id,
       credentials: descriptor.credentials,
+      userToken,
     });
   }
 
@@ -1208,7 +1325,7 @@ export default function SheetsBuilder() {
 
                 <p className="mt-3 text-xs leading-4 text-zinc-500">
                   {supportsShortResource
-                    ? "The formula uses a short resource ID. Wallet and network parameters are stored once; credentials remain a separate URL parameter and are never saved with the resource."
+                    ? "Signed-in formulas include a revocable, read-only Sheets token and receive a higher request limit. Anonymous formulas remain available with a smaller limit."
                     : "This cell cannot use a stable resource ID, so the compatible legacy URL is used."}
                 </p>
               </section>

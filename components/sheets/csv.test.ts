@@ -165,16 +165,17 @@ describe("short value resources", () => {
     });
   });
 
-  it("builds a short URL with credentials as separate parameters", () => {
+  it("builds a short URL with credentials and scoped user token", () => {
     expect(
       buildShortValueUrl({
         apiBaseUrl: "https://hunt.data.lisacorp.com",
         resourceId: "AbCdEf123456",
         credentials: { capsule: "dhc1.v2.encrypted" },
+        userToken: "signed-sheets-token",
       })
     ).toBe(
       "https://hunt.data.lisacorp.com/v/AbCdEf123456?" +
-        "capsule=dhc1.v2.encrypted"
+        "capsule=dhc1.v2.encrypted&auth_token=signed-sheets-token"
     );
   });
 });
