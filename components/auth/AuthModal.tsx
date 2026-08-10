@@ -7,9 +7,16 @@ import { ethers } from 'ethers';
 interface AuthModalProps {
     isOpen: boolean;
     onClose: () => void;
+    redirectTo?: string | null;
+    onAuthenticated?: () => void;
 }
 
-export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
+export default function AuthModal({
+    isOpen,
+    onClose,
+    redirectTo,
+    onAuthenticated,
+}: AuthModalProps) {
     const [status, setStatus] = useState<string>('');
     const [loading, setLoading] = useState(false);
     const router = useRouter();
@@ -21,13 +28,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         setLoading(true);
 
         try {
-            if (typeof window === 'undefined' || !(window as any).ethereum) {
+            if (typeof window === 'undefined' || !window.ethereum) {
                 setStatus('MetaMask not installed');
                 setLoading(false);
                 return;
             }
 
-            const provider = new ethers.BrowserProvider((window as any).ethereum);
+            const provider = new ethers.BrowserProvider(window.ethereum);
 
             // Request accounts (connect if not connected)
             setStatus('Requesting wallet connection...');
@@ -49,7 +56,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             setStatus('Verifying & Logging in...');
 
             // Call backend
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://0.0.0.0:8111';
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://hunt.data.lisacorp.com';
             const response = await fetch(`${apiUrl}/web3/login`, {
                 method: 'POST',
                 headers: {
@@ -67,19 +74,23 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             if (response.ok) {
                 setStatus('Login successful!');
                 localStorage.setItem('data_hunt_token', data.access_token);
+                window.dispatchEvent(new Event('data-hunt-auth'));
 
                 // Close modal and redirect
                 setTimeout(() => {
+                    onAuthenticated?.();
                     onClose();
-                    router.push('/account');
+                    if (redirectTo !== null) {
+                        router.push(redirectTo ?? '/account');
+                    }
                 }, 1000);
             } else {
                 setStatus(`Login failed: ${data.detail || 'Unknown error'}`);
             }
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error(error);
-            setStatus(`Error: ${error.message || 'Failed to login'}`);
+            setStatus(`Error: ${error instanceof Error ? error.message : 'Failed to login'}`);
         } finally {
             setLoading(false);
         }
@@ -122,9 +133,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                         ) : (
                             <>
                                 <span>Sign & Login With Wallet</span>
-                                <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                                </svg>
+                                <span className="transition-transform group-hover:translate-x-0.5">→</span>
                             </>
                         )}
                     </button>
