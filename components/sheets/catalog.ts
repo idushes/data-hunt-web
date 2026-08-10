@@ -484,15 +484,22 @@ export const sheetSources: SheetSource[] = [
     id: "coinbase",
     name: "Coinbase balances",
     group: "Exchanges",
-    description: "Coinbase App and INTX portfolio balances and positions.",
+    description:
+      "Coinbase App and INTX balances with separate Main and Perpetuals view-only keys.",
     path: "/coinbase/balance",
     keyColumn: "id",
     parameters: [
       {
         key: "capsule",
-        label: "Encrypted Coinbase access key",
+        label: "Encrypted Coinbase Main access key",
         kind: "secret",
         required: true,
+      },
+      {
+        key: "intx_capsule",
+        label: "Encrypted Coinbase Perpetuals access key",
+        kind: "secret",
+        required: false,
       },
       {
         key: "include_zero",
@@ -502,7 +509,7 @@ export const sheetSources: SheetSource[] = [
       },
       {
         key: "include_portfolios",
-        label: "Include INTX portfolios",
+        label: "Include portfolio balances and perpetuals",
         kind: "boolean",
         defaultValue: "true",
       },

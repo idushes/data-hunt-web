@@ -27,7 +27,12 @@ type SelectedCell = {
   column: number;
 };
 
-type CopyTarget = "formula" | "value" | "url";
+type CopyTarget =
+  | "formula"
+  | "value"
+  | "url"
+  | "coinbase-main"
+  | "coinbase-intx";
 
 type AddressKind = "evm" | "solana" | "tron";
 
@@ -43,6 +48,8 @@ const SAVED_ADDRESSES_EVENT = "datahunt:sheets:saved-addresses-changed";
 const AUTH_CHANGED_EVENT = "data-hunt-auth";
 const EMPTY_SAVED_ADDRESSES = "[]";
 const COINBASE_CAPSULE_STORAGE_KEY = "datahunt:coinbase:capsule:v1";
+const COINBASE_INTX_CAPSULE_STORAGE_KEY =
+  "datahunt:coinbase:intx-capsule:v1";
 const SHEETS_ACCESS_STORAGE_KEY = "datahunt:sheets:access:v1";
 
 type StoredSheetsAccess = {
@@ -534,6 +541,151 @@ function AddressField({
   );
 }
 
+type CoinbaseKeyCardProps = {
+  title: string;
+  description: string;
+  capsule: string;
+  keyName: string;
+  keySecret: string;
+  editing: boolean;
+  generating: boolean;
+  copied: boolean;
+  optional?: boolean;
+  onKeyNameChange: (value: string) => void;
+  onKeySecretChange: (value: string) => void;
+  onGenerate: () => void;
+  onCopy: () => void;
+  onEdit: () => void;
+  onCancel: () => void;
+  onRemove: () => void;
+};
+
+function CoinbaseKeyCard({
+  title,
+  description,
+  capsule,
+  keyName,
+  keySecret,
+  editing,
+  generating,
+  copied,
+  optional = false,
+  onKeyNameChange,
+  onKeySecretChange,
+  onGenerate,
+  onCopy,
+  onEdit,
+  onCancel,
+  onRemove,
+}: CoinbaseKeyCardProps) {
+  if (capsule && !editing) {
+    return (
+      <div className="flex min-w-0 flex-col justify-between gap-3 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.06] p-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium text-emerald-200">{title}</p>
+            <span className="rounded bg-emerald-400/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-300">
+              Saved
+            </span>
+          </div>
+          <p className="mt-1 text-[11px] leading-4 text-zinc-500">
+            {description}
+          </p>
+          <p className="mt-2 truncate font-mono text-[10px] text-zinc-600">
+            {capsule.slice(0, 18)}…{capsule.slice(-8)}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onCopy}
+            className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-zinc-300 transition hover:bg-white/10"
+          >
+            {copied ? "Copied" : "Copy"}
+          </button>
+          <button
+            type="button"
+            onClick={onEdit}
+            className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-zinc-300 transition hover:bg-white/10"
+          >
+            Replace
+          </button>
+          <button
+            type="button"
+            onClick={onRemove}
+            className="rounded-md border border-red-400/20 bg-red-400/5 px-2.5 py-1.5 text-xs text-red-300 transition hover:bg-red-400/10"
+          >
+            Remove
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-blue-400/20 bg-blue-400/[0.05] p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-blue-100">{title}</p>
+          <p className="mt-1 text-[11px] leading-4 text-zinc-500">
+            {description}
+          </p>
+        </div>
+        {optional ? (
+          <span className="rounded bg-white/5 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-zinc-500">
+            Optional
+          </span>
+        ) : null}
+      </div>
+      <label className="mt-3 block text-xs text-zinc-400">
+        API key name
+        <input
+          value={keyName}
+          onChange={(event) => onKeyNameChange(event.target.value)}
+          placeholder="organizations/…/apiKeys/…"
+          autoComplete="off"
+          spellCheck={false}
+          className={`${parameterInputClass()} font-mono text-xs`}
+        />
+      </label>
+      <label className="mt-2 block text-xs text-zinc-400">
+        EC private key
+        <textarea
+          value={keySecret}
+          onChange={(event) => onKeySecretChange(event.target.value)}
+          placeholder="-----BEGIN EC PRIVATE KEY-----"
+          rows={2}
+          autoComplete="off"
+          spellCheck={false}
+          className={`${parameterInputClass()} resize-y font-mono text-xs`}
+        />
+      </label>
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <p className="text-[10px] leading-4 text-zinc-600">View-only key</p>
+        <div className="flex gap-2">
+          {capsule ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="rounded-md border border-white/10 px-2.5 py-1.5 text-xs text-zinc-400"
+            >
+              Cancel
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onGenerate}
+            disabled={generating}
+            className="rounded-md bg-blue-500 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-400 disabled:cursor-wait disabled:opacity-60"
+          >
+            {generating ? "Checking…" : "Encrypt key"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SheetsBuilder() {
   const defaultSource = sheetSources[0];
   const authorizedWallets = useAuthorizedWallets();
@@ -554,6 +706,11 @@ export default function SheetsBuilder() {
   const [coinbaseKeySecret, setCoinbaseKeySecret] = useState("");
   const [editingCoinbaseKey, setEditingCoinbaseKey] = useState(false);
   const [generatingCoinbaseKey, setGeneratingCoinbaseKey] = useState(false);
+  const [coinbaseIntxKeyName, setCoinbaseIntxKeyName] = useState("");
+  const [coinbaseIntxKeySecret, setCoinbaseIntxKeySecret] = useState("");
+  const [editingCoinbaseIntxKey, setEditingCoinbaseIntxKey] = useState(false);
+  const [generatingCoinbaseIntxKey, setGeneratingCoinbaseIntxKey] =
+    useState(false);
 
   useEffect(() => {
     function resetShortLinks() {
@@ -779,6 +936,8 @@ export default function SheetsBuilder() {
     if (nextSource.id === "coinbase") {
       nextValues.capsule =
         localStorage.getItem(COINBASE_CAPSULE_STORAGE_KEY) ?? "";
+      nextValues.intx_capsule =
+        localStorage.getItem(COINBASE_INTX_CAPSULE_STORAGE_KEY) ?? "";
     }
 
     setSourceId(nextSource.id);
@@ -792,6 +951,9 @@ export default function SheetsBuilder() {
     setCoinbaseKeyName("");
     setCoinbaseKeySecret("");
     setEditingCoinbaseKey(false);
+    setCoinbaseIntxKeyName("");
+    setCoinbaseIntxKeySecret("");
+    setEditingCoinbaseIntxKey(false);
   }
 
   function updateValue(key: string, value: string) {
@@ -871,15 +1033,25 @@ export default function SheetsBuilder() {
     }
   }
 
-  async function generateCoinbaseCapsule() {
-    const keyName = coinbaseKeyName.trim();
-    const keySecret = coinbaseKeySecret.trim();
+  async function generateCoinbaseCapsule(kind: "main" | "intx") {
+    const isIntx = kind === "intx";
+    const keyName = (
+      isIntx ? coinbaseIntxKeyName : coinbaseKeyName
+    ).trim();
+    const keySecret = (
+      isIntx ? coinbaseIntxKeySecret : coinbaseKeySecret
+    ).trim();
     if (!keyName || !keySecret) {
-      setError("Enter both the Coinbase API key name and EC private key.");
+      setError(
+        `Enter both the Coinbase ${isIntx ? "Perpetuals" : "Main"} API key name and EC private key.`
+      );
       return;
     }
 
-    setGeneratingCoinbaseKey(true);
+    const setGenerating = isIntx
+      ? setGeneratingCoinbaseIntxKey
+      : setGeneratingCoinbaseKey;
+    setGenerating(true);
     setError("");
     try {
       const response = await fetch(`${API_BASE_URL}/coinbase/capsule`, {
@@ -896,11 +1068,21 @@ export default function SheetsBuilder() {
         throw new Error("The API did not return an encrypted access key.");
       }
 
-      localStorage.setItem(COINBASE_CAPSULE_STORAGE_KEY, payload.capsule);
-      updateValue("capsule", payload.capsule);
-      setCoinbaseKeyName("");
-      setCoinbaseKeySecret("");
-      setEditingCoinbaseKey(false);
+      const storageKey = isIntx
+        ? COINBASE_INTX_CAPSULE_STORAGE_KEY
+        : COINBASE_CAPSULE_STORAGE_KEY;
+      const parameterKey = isIntx ? "intx_capsule" : "capsule";
+      localStorage.setItem(storageKey, payload.capsule);
+      updateValue(parameterKey, payload.capsule);
+      if (isIntx) {
+        setCoinbaseIntxKeyName("");
+        setCoinbaseIntxKeySecret("");
+        setEditingCoinbaseIntxKey(false);
+      } else {
+        setCoinbaseKeyName("");
+        setCoinbaseKeySecret("");
+        setEditingCoinbaseKey(false);
+      }
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -908,14 +1090,23 @@ export default function SheetsBuilder() {
           : "Unable to generate the encrypted access key"
       );
     } finally {
-      setGeneratingCoinbaseKey(false);
+      setGenerating(false);
     }
   }
 
-  function removeCoinbaseCapsule() {
-    localStorage.removeItem(COINBASE_CAPSULE_STORAGE_KEY);
-    updateValue("capsule", "");
-    setEditingCoinbaseKey(true);
+  function removeCoinbaseCapsule(kind: "main" | "intx") {
+    const isIntx = kind === "intx";
+    localStorage.removeItem(
+      isIntx
+        ? COINBASE_INTX_CAPSULE_STORAGE_KEY
+        : COINBASE_CAPSULE_STORAGE_KEY
+    );
+    updateValue(isIntx ? "intx_capsule" : "capsule", "");
+    if (isIntx) {
+      setEditingCoinbaseIntxKey(true);
+    } else {
+      setEditingCoinbaseKey(true);
+    }
     setError("");
   }
 
@@ -991,7 +1182,11 @@ export default function SheetsBuilder() {
                 {source.parameters
                   .filter(
                     (parameter) =>
-                      !(source.id === "coinbase" && parameter.key === "capsule")
+                      !(
+                        source.id === "coinbase" &&
+                        (parameter.key === "capsule" ||
+                          parameter.key === "intx_capsule")
+                      )
                   )
                   .map((parameter) => {
                     const kind = addressKind(parameter);
@@ -1017,94 +1212,49 @@ export default function SheetsBuilder() {
                     );
                   })}
                 {source.id === "coinbase" ? (
-                  <div className="min-w-0 sm:col-span-2 xl:col-span-3">
-                    {values.capsule && !editingCoinbaseKey ? (
-                      <div className="flex flex-col gap-3 rounded-lg border border-emerald-400/20 bg-emerald-400/[0.06] p-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-emerald-200">
-                            Encrypted access key saved
-                          </p>
-                          <p className="mt-1 truncate font-mono text-[11px] text-zinc-500">
-                            {values.capsule.slice(0, 22)}…{values.capsule.slice(-10)}
-                          </p>
-                        </div>
-                        <div className="flex shrink-0 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => void copyText(values.capsule, "url")}
-                            className="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300 transition hover:bg-white/10"
-                          >
-                            {copied === "url" ? "Copied" : "Copy key"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setEditingCoinbaseKey(true)}
-                            className="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300 transition hover:bg-white/10"
-                          >
-                            Replace
-                          </button>
-                          <button
-                            type="button"
-                            onClick={removeCoinbaseCapsule}
-                            className="rounded-md border border-red-400/20 bg-red-400/5 px-3 py-1.5 text-xs text-red-300 transition hover:bg-red-400/10"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="rounded-lg border border-blue-400/20 bg-blue-400/[0.05] p-3">
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <label className="block text-sm text-zinc-300">
-                            Coinbase API key name
-                            <input
-                              value={coinbaseKeyName}
-                              onChange={(event) => setCoinbaseKeyName(event.target.value)}
-                              placeholder="organizations/…/apiKeys/…"
-                              autoComplete="off"
-                              spellCheck={false}
-                              className={`${parameterInputClass()} font-mono text-xs`}
-                            />
-                          </label>
-                          <label className="block text-sm text-zinc-300">
-                            EC private key
-                            <textarea
-                              value={coinbaseKeySecret}
-                              onChange={(event) => setCoinbaseKeySecret(event.target.value)}
-                              placeholder="-----BEGIN EC PRIVATE KEY-----"
-                              rows={3}
-                              autoComplete="off"
-                              spellCheck={false}
-                              className={`${parameterInputClass()} resize-y font-mono text-xs`}
-                            />
-                          </label>
-                        </div>
-                        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <p className="text-[11px] leading-4 text-zinc-500">
-                            View-only keys only. Trade, Transfer, and Receive permissions are rejected.
-                          </p>
-                          <div className="flex gap-2">
-                            {values.capsule ? (
-                              <button
-                                type="button"
-                                onClick={() => setEditingCoinbaseKey(false)}
-                                className="rounded-md border border-white/10 px-3 py-1.5 text-xs text-zinc-400"
-                              >
-                                Cancel
-                              </button>
-                            ) : null}
-                            <button
-                              type="button"
-                              onClick={() => void generateCoinbaseCapsule()}
-                              disabled={generatingCoinbaseKey}
-                              className="rounded-md bg-blue-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-400 disabled:cursor-wait disabled:opacity-60"
-                            >
-                              {generatingCoinbaseKey ? "Checking…" : "Generate encrypted key"}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                  <div className="grid min-w-0 gap-3 sm:col-span-2 lg:grid-cols-2 xl:col-span-3">
+                    <CoinbaseKeyCard
+                      title="Main / Coinbase App"
+                      description="Wallet balances and the Default portfolio."
+                      capsule={values.capsule ?? ""}
+                      keyName={coinbaseKeyName}
+                      keySecret={coinbaseKeySecret}
+                      editing={editingCoinbaseKey}
+                      generating={generatingCoinbaseKey}
+                      copied={copied === "coinbase-main"}
+                      onKeyNameChange={setCoinbaseKeyName}
+                      onKeySecretChange={setCoinbaseKeySecret}
+                      onGenerate={() => void generateCoinbaseCapsule("main")}
+                      onCopy={() =>
+                        void copyText(values.capsule ?? "", "coinbase-main")
+                      }
+                      onEdit={() => setEditingCoinbaseKey(true)}
+                      onCancel={() => setEditingCoinbaseKey(false)}
+                      onRemove={() => removeCoinbaseCapsule("main")}
+                    />
+                    <CoinbaseKeyCard
+                      title="Perpetuals / INTX"
+                      description="INTX cash, margin, PnL, and perpetual positions."
+                      capsule={values.intx_capsule ?? ""}
+                      keyName={coinbaseIntxKeyName}
+                      keySecret={coinbaseIntxKeySecret}
+                      editing={editingCoinbaseIntxKey}
+                      generating={generatingCoinbaseIntxKey}
+                      copied={copied === "coinbase-intx"}
+                      optional
+                      onKeyNameChange={setCoinbaseIntxKeyName}
+                      onKeySecretChange={setCoinbaseIntxKeySecret}
+                      onGenerate={() => void generateCoinbaseCapsule("intx")}
+                      onCopy={() =>
+                        void copyText(
+                          values.intx_capsule ?? "",
+                          "coinbase-intx"
+                        )
+                      }
+                      onEdit={() => setEditingCoinbaseIntxKey(true)}
+                      onCancel={() => setEditingCoinbaseIntxKey(false)}
+                      onRemove={() => removeCoinbaseCapsule("intx")}
+                    />
                   </div>
                 ) : null}
               </div>
@@ -1113,7 +1263,7 @@ export default function SheetsBuilder() {
             <div className="mt-3 flex flex-col gap-3 border-t border-white/10 pt-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="max-w-2xl text-[11px] leading-4 text-zinc-600">
                 {source.id === "coinbase"
-                  ? "The encrypted access key stays in this browser. It is added only to the short formula URL and is never stored with the resource."
+                  ? "Both encrypted access keys stay in this browser. They are added only to the short formula URL and are never stored with the resource."
                   : "Tokens and keys are added only to the formula URL and are never stored with the resource. Do not share sheets containing credentials."}
               </p>
 

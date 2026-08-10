@@ -105,7 +105,7 @@ describe("buildStableValueUrl", () => {
       source: "coinbase",
       sourceUrl:
         "https://hunt.data.lisacorp.com/coinbase/balance?" +
-        "capsule=dhc1.v1.encrypted&include_portfolios=true",
+        "capsule=dhc1.v1.main&intx_capsule=dhc1.v1.intx&include_portfolios=true",
       rows: coinbaseRows,
       rowIndex: 1,
       columnIndex: 2,
@@ -114,7 +114,8 @@ describe("buildStableValueUrl", () => {
     const url = new URL(result);
 
     expect(url.pathname).toBe("/value");
-    expect(url.searchParams.get("capsule")).toBe("dhc1.v1.encrypted");
+    expect(url.searchParams.get("capsule")).toBe("dhc1.v1.main");
+    expect(url.searchParams.get("intx_capsule")).toBe("dhc1.v1.intx");
     expect(url.searchParams.get("key")).toBe("coinbase:total_balance");
     expect(url.searchParams.get("column")).toBe("balance");
   });
@@ -127,7 +128,7 @@ describe("short value resources", () => {
       source: "coinbase",
       sourceUrl:
         "https://hunt.data.lisacorp.com/coinbase/balance?" +
-        "capsule=dhc1.v2.encrypted&include_portfolios=true",
+        "capsule=dhc1.v2.main&intx_capsule=dhc1.v2.intx&include_portfolios=true",
       rows: [
         ["id", "balance"],
         ["coinbase:total_balance", "3596.50"],
@@ -135,7 +136,7 @@ describe("short value resources", () => {
       rowIndex: 1,
       columnIndex: 1,
       keyColumn: "id",
-      credentialParameters: ["capsule"],
+      credentialParameters: ["capsule", "intx_capsule"],
     });
 
     expect(descriptor).toEqual({
@@ -145,7 +146,10 @@ describe("short value resources", () => {
         column: "balance",
         parameters: { include_portfolios: "true" },
       },
-      credentials: { capsule: "dhc1.v2.encrypted" },
+      credentials: {
+        capsule: "dhc1.v2.main",
+        intx_capsule: "dhc1.v2.intx",
+      },
     });
   });
 
