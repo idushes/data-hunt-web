@@ -140,7 +140,10 @@ export const sheetSources: SheetSource[] = [
         label: "Сеть",
         kind: "select",
         defaultValue: "1",
-        options: [{ label: "Ethereum", value: "1" }],
+        options: [
+          { label: "Ethereum", value: "1" },
+          { label: "Monad", value: "143" },
+        ],
       },
       {
         key: "include_closed",
