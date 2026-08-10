@@ -474,6 +474,16 @@ export const sheetSources: SheetSource[] = [
     parameters: [solanaWallet],
   },
   {
+    id: "jupiter-jlp",
+    name: "Jupiter JLP",
+    group: "Solana",
+    description:
+      "JLP balance, USD value, price, APR, APY, pool AUM, supply, and realized fees.",
+    path: "/jupiter/jlp.csv",
+    keyColumn: "position_id",
+    parameters: [solanaWallet],
+  },
+  {
     id: "gmtrade-perps",
     name: "GMTrade perpetuals",
     group: "Solana",
