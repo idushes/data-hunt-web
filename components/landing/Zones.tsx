@@ -1,62 +1,88 @@
-import GrowthAnim from './GrowthAnim';
-import StabilityAnim from './StabilityAnim';
-import YieldAnim from './YieldAnim';
+const sourceGroups = [
+  {
+    label: "Onchain DeFi",
+    title: "Positions, debt, fees, and rewards",
+    description:
+      "Read supplied assets, loans, health factors, LP composition, claimable fees, and farming rewards directly into your workbook.",
+    sources: ["Fluid", "Aave", "Uniswap V3", "Stake DAO"],
+    accent: "violet",
+  },
+  {
+    label: "Wallets & market",
+    title: "The balances around your positions",
+    description:
+      "Keep Ethereum and Solana stablecoin balances beside current market prices without maintaining another portfolio app.",
+    sources: ["USDC / USDT", "Ethereum", "Solana", "CoinMarketCap"],
+    accent: "blue",
+  },
+  {
+    label: "Solana",
+    title: "Vaults, assets, and perpetuals",
+    description:
+      "Bring Kamino Earn, Private Credit, kVaults, GMTrade assets, and open perpetual positions into the same sheet.",
+    sources: ["Kamino", "kVaults", "GMTrade", "Perpetuals"],
+    accent: "emerald",
+  },
+  {
+    label: "Trading accounts",
+    title: "Exchange equity in the same view",
+    description:
+      "Combine account values, collateral, withdrawable balances, and portfolio positions with your onchain holdings.",
+    sources: ["Coinbase", "Hyperliquid", "Lighter", "Paradex"],
+    accent: "amber",
+  },
+];
+
+const accents = {
+  violet: "border-violet-400/15 bg-violet-400/[0.06] text-violet-200",
+  blue: "border-blue-400/15 bg-blue-400/[0.06] text-blue-200",
+  emerald: "border-emerald-400/15 bg-emerald-400/[0.06] text-emerald-200",
+  amber: "border-amber-400/15 bg-amber-400/[0.06] text-amber-200",
+};
 
 export default function Zones() {
-    const zones = [
-        {
-            title: 'Growth Zone',
-            description: 'High-risk, high-reward assets. Track volatility and potential upside with precision.',
-            AnimationComponent: GrowthAnim,
-            gradient: 'from-blue-500 to-cyan-400'
-        },
-        {
-            title: 'Stability Zone',
-            description: 'Stablecoins and low-risk assets. The bedrock of your portfolio against market turbulence.',
-            AnimationComponent: StabilityAnim,
-            gradient: 'from-purple-500 to-pink-500'
-        },
-        {
-            title: 'Yield Zone',
-            description: 'Liquidity pools and staking. Automatically calculate APY/APR and farming rewards.',
-            AnimationComponent: YieldAnim,
-            gradient: 'from-green-500 to-emerald-400'
-        }
-    ];
+  return (
+    <section id="sources" className="relative py-24 sm:py-28">
+      <div className="mx-auto max-w-7xl px-6">
+        <div className="max-w-3xl">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-violet-300">Data sources</p>
+          <h2 className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl">
+            One helper for the numbers scattered across your portfolio.
+          </h2>
+          <p className="mt-5 text-lg leading-8 text-zinc-400">
+            Data Hunt normalizes different protocols and APIs into simple tables,
+            so your spreadsheet can stay the single place where you make decisions.
+          </p>
+        </div>
 
-    return (
-        <section id="zones" className="py-24 relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-b from-black via-blue-900/5 to-black pointer-events-none" />
-
-            <div className="max-w-7xl mx-auto px-6 relative z-10">
-                <div className="text-center mb-16">
-                    <h2 className="text-3xl md:text-5xl font-bold mb-4">
-                        The <span className="text-gradient-gold">Trinity System</span>
-                    </h2>
-                    <p className="text-gray-400 max-w-2xl mx-auto">
-                        Divide and conquer. Our proprietary system separates your portfolio into three strategic buckets for optimal balance.
-                    </p>
+        <div className="mt-14 grid gap-4 md:grid-cols-2">
+          {sourceGroups.map((group) => (
+            <article
+              key={group.label}
+              className="group rounded-2xl border border-white/10 bg-white/[0.025] p-6 transition hover:border-white/20 hover:bg-white/[0.04] sm:p-8"
+            >
+              <div className="flex items-start justify-between gap-6">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">{group.label}</p>
+                  <h3 className="mt-3 text-2xl font-semibold tracking-tight text-white">{group.title}</h3>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {zones.map((zone, index) => (
-                        <div key={index} className="group glass-panel p-6 rounded-2xl border border-white/5 hover:border-white/20 transition-all duration-300 hover:-translate-y-2 overflow-hidden relative">
-
-                            <div className="h-48 w-full mb-6 relative rounded-xl overflow-hidden bg-black/50">
-                                <div className={`absolute inset-0 bg-gradient-to-br ${zone.gradient} opacity-20 group-hover:opacity-30 transition-opacity z-10 pointer-events-none`} />
-                                <div className="absolute inset-0 transform group-hover:scale-110 transition-transform duration-700 z-0">
-                                    <zone.AnimationComponent />
-                                </div>
-                            </div>
-
-                            <h3 className="text-2xl font-bold mb-3">{zone.title}</h3>
-                            <p className="text-gray-400 leading-relaxed relative z-10">
-                                {zone.description}
-                            </p>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </section>
-    );
+                <span className="font-mono text-xs text-zinc-700">0{sourceGroups.indexOf(group) + 1}</span>
+              </div>
+              <p className="mt-4 max-w-xl leading-7 text-zinc-400">{group.description}</p>
+              <div className="mt-7 flex flex-wrap gap-2">
+                {group.sources.map((source) => (
+                  <span
+                    key={source}
+                    className={`rounded-full border px-3 py-1.5 text-xs ${accents[group.accent as keyof typeof accents]}`}
+                  >
+                    {source}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 }

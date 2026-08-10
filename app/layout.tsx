@@ -13,8 +13,23 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Data Hunt",
-  description: "Cross-chain activity tracker",
+  metadataBase: new URL("https://crypto.lisacorp.com"),
+  title: "DataHunt — Live crypto data for Google Sheets",
+  description:
+    "Import DeFi positions, wallet balances, Solana vaults, exchange accounts, and token prices into Google Sheets.",
+  openGraph: {
+    title: "DataHunt — Live crypto data for Google Sheets",
+    description:
+      "Turn live crypto positions into dependable Google Sheets cells.",
+    type: "website",
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "DataHunt — Live crypto data for Google Sheets",
+    description:
+      "Turn live crypto positions into dependable Google Sheets cells.",
+  },
   icons: {
     icon: [
         { url: '/favicon_io/favicon-32x32.png', sizes: '32x32', type: 'image/png' },

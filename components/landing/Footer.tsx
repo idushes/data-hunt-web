@@ -1,14 +1,18 @@
+import Link from "next/link";
+
 export default function Footer() {
     return (
-        <footer className="py-12 border-t border-white/5 bg-black">
-            <div className="max-w-7xl mx-auto px-6 text-center">
-                <p className="text-gray-600 mb-4">
-                    &copy; {new Date().getFullYear()} DataHunt. All rights reserved.
-                </p>
-                <div className="flex justify-center gap-6 text-sm text-gray-500">
-                    <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-                    <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
-                    <a href="#" className="hover:text-white transition-colors">Twitter</a>
+        <footer className="border-t border-white/5 bg-black py-10">
+            <div className="mx-auto flex max-w-7xl flex-col gap-6 px-6 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <p className="font-semibold text-white">DataHunt</p>
+                    <p className="mt-1 text-sm text-zinc-600">Live crypto data for the spreadsheet you control.</p>
+                </div>
+                <div className="flex flex-wrap gap-6 text-sm text-zinc-500">
+                    <Link href="/sheets" className="transition-colors hover:text-white">Sheets helper</Link>
+                    <Link href="/gmtrade" className="transition-colors hover:text-white">GMTRADE</Link>
+                    <a href="https://hunt.data.lisacorp.com/docs" className="transition-colors hover:text-white">API docs</a>
+                    <span>&copy; {new Date().getFullYear()}</span>
                 </div>
             </div>
         </footer>

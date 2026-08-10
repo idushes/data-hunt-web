@@ -34,20 +34,12 @@ export default function Header() {
                     </Link>
 
                     <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-400">
-                        <Link href="/#zones" className="hover:text-white transition-colors">Zones</Link>
-                        <Link href="/#features" className="hover:text-white transition-colors">Features</Link>
+                        <Link href="/#sources" className="hover:text-white transition-colors">Sources</Link>
+                        <Link href="/#workflow" className="hover:text-white transition-colors">How it works</Link>
                         <Link href="/#security" className="hover:text-white transition-colors">Security</Link>
                     </nav>
 
                     <div className="flex items-center gap-3 sm:gap-4">
-                        <Link
-                            href="/sheets"
-                            aria-label="Open Google Sheets helper"
-                            className="px-3 sm:px-4 py-2 text-sm font-medium bg-violet-500/10 hover:bg-violet-500/20 text-violet-200 rounded-lg transition-all border border-violet-400/20 backdrop-blur-sm"
-                        >
-                            <span className="sm:hidden">CSV</span>
-                            <span className="hidden sm:inline">Sheets</span>
-                        </Link>
                         <Link
                             href="/gmtrade"
                             aria-label="Open GMTRADE"
@@ -75,6 +67,14 @@ export default function Header() {
                                 <span className="hidden sm:inline">Sign & Login</span>
                             </button>
                         )}
+                        <Link
+                            href="/sheets"
+                            aria-label="Open Google Sheets helper"
+                            className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-black transition-all hover:bg-violet-100 sm:px-4"
+                        >
+                            <span className="sm:hidden">Sheets</span>
+                            <span className="hidden sm:inline">Open Sheets helper</span>
+                        </Link>
                     </div>
                 </div>
             </header>
