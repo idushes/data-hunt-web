@@ -116,6 +116,37 @@ export const sheetSources: SheetSource[] = [
     ],
   },
   {
+    id: "morpho",
+    name: "Morpho positions",
+    group: "DeFi",
+    description:
+      "Morpho market and vault positions with supply, borrow, collateral, APY, and USD values.",
+    path: "/morpho/positions.csv",
+    keyColumn: "position_id",
+    parameters: [
+      evmAddress,
+      {
+        key: "chain_id",
+        label: "Network",
+        kind: "select",
+        defaultValue: "1",
+        options: [
+          { label: "Ethereum", value: "1" },
+          { label: "Arbitrum", value: "42161" },
+          { label: "Base", value: "8453" },
+          { label: "HyperEVM", value: "999" },
+          { label: "Katana", value: "747474" },
+          { label: "Monad", value: "143" },
+          { label: "Optimism", value: "10" },
+          { label: "Polygon", value: "137" },
+          { label: "Tempo", value: "4217" },
+          { label: "Unichain", value: "130" },
+          { label: "World Chain", value: "480" },
+        ],
+      },
+    ],
+  },
+  {
     id: "uniswap",
     name: "Uniswap V3 positions",
     group: "DeFi",
