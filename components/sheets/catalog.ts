@@ -253,14 +253,24 @@ export const sheetSources: SheetSource[] = [
     parameters: [
       {
         ...evmAddress,
-        label: "Ethereum address",
+        label: "EVM address",
         required: false,
-        help: "You can provide an Ethereum address, a Solana address, or both.",
+        help: "You can provide an EVM address, a Solana address, or both.",
+      },
+      {
+        key: "chain_id",
+        label: "EVM network",
+        kind: "select",
+        defaultValue: "1",
+        options: [
+          { label: "Ethereum", value: "1" },
+          { label: "Arbitrum", value: "42161" },
+        ],
       },
       {
         ...solanaWallet,
         required: false,
-        help: "You can provide an Ethereum address, a Solana address, or both.",
+        help: "You can provide an EVM address, a Solana address, or both.",
       },
     ],
   },
