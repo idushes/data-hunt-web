@@ -20,6 +20,7 @@ export type SheetParameter = {
   placeholder?: string;
   help?: string;
   options?: ParameterOption[];
+  multiple?: boolean;
 };
 
 export type SheetSource = {
@@ -276,7 +277,8 @@ export const sheetSources: SheetSource[] = [
         ...evmAddress,
         label: "EVM address",
         required: false,
-        help: "You can provide EVM, Solana, or TRON addresses in any combination.",
+        multiple: true,
+        help: "Select one or more EVM wallets.",
       },
       {
         key: "chain_id",
@@ -292,14 +294,16 @@ export const sheetSources: SheetSource[] = [
       {
         ...solanaWallet,
         required: false,
-        help: "You can provide EVM, Solana, or TRON addresses in any combination.",
+        multiple: true,
+        help: "Select one or more Solana wallets.",
       },
       {
         key: "tron_address",
         label: "TRON address",
         kind: "text",
         placeholder: "T…",
-        help: "Optional TRON address for USDT and legacy USDC balances.",
+        multiple: true,
+        help: "Select one or more TRON wallets.",
       },
     ],
   },

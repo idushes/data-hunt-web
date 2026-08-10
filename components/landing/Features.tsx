@@ -54,7 +54,7 @@ const benefits = [
   { icon: "⌁", title: "Stable cells", note: "Row order safe" },
   { icon: "60", title: "60s cache", note: "Fewer requests" },
   { icon: "🔒", title: "Private Coinbase", note: "Separate Main + Perps keys" },
-  { icon: "CSV", title: "Plain data", note: "Easy to inspect" },
+  { icon: "+", title: "Multi-wallet", note: "EVM + Solana + TRON" },
 ];
 
 export default function Features() {

@@ -248,6 +248,20 @@ function normalizedAddress(value: string, kind: AddressKind) {
   return kind === "evm" ? trimmed.toLowerCase() : trimmed;
 }
 
+function addressList(value: string, kind: AddressKind) {
+  const addresses: string[] = [];
+  const seen = new Set<string>();
+  for (const candidate of value.split(/[,;\n]+/)) {
+    const trimmed = candidate.trim();
+    if (!trimmed) continue;
+    const normalized = normalizedAddress(trimmed, kind);
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    addresses.push(trimmed);
+  }
+  return addresses;
+}
+
 function validAddress(value: string, kind: AddressKind) {
   const trimmed = value.trim();
   if (kind === "evm") return /^0x[0-9a-fA-F]{40}$/.test(trimmed);
@@ -373,10 +387,38 @@ function AddressField({
   const allAddresses = useSavedAddresses();
   const addresses = allAddresses.filter((address) => address.kind === kind);
   const accountWallets = kind === "evm" ? authorizedWallets : [];
-  const normalizedValue = normalizedAddress(value, kind);
+  const selectedValues = addressList(value, kind);
+  const normalizedSelections = new Set(
+    selectedValues.map((address) => normalizedAddress(address, kind))
+  );
+  const normalizedValue =
+    selectedValues.length === 1
+      ? normalizedAddress(selectedValues[0], kind)
+      : "";
   const selectedAddress = addresses.find(
     (address) => normalizedAddress(address.value, kind) === normalizedValue
   );
+  const walletOptionCandidates = [
+    ...accountWallets.map((wallet) => ({
+      id: `account:${wallet.id}`,
+      group: "Authorized wallets",
+      label: `${wallet.network.toUpperCase()} · ${shortAddress(wallet.address)}`,
+      value: wallet.address,
+    })),
+    ...addresses.map((address) => ({
+      id: `saved:${address.id}`,
+      group: "Saved in this browser",
+      label: `${address.label} · ${shortAddress(address.value)}`,
+      value: address.value,
+    })),
+  ];
+  const seenWalletOptions = new Set<string>();
+  const walletOptions = walletOptionCandidates.filter((option) => {
+    const normalized = normalizedAddress(option.value, kind);
+    if (seenWalletOptions.has(normalized)) return false;
+    seenWalletOptions.add(normalized);
+    return true;
+  });
 
   function selectAddress(address: string) {
     if (!address) return;
@@ -384,15 +426,28 @@ function AddressField({
     onError("");
   }
 
+  function toggleAddress(address: string) {
+    const normalized = normalizedAddress(address, kind);
+    const nextValues = normalizedSelections.has(normalized)
+      ? selectedValues.filter(
+          (selected) => normalizedAddress(selected, kind) !== normalized
+        )
+      : [...selectedValues, address];
+    onChange(nextValues.join(","));
+    onError("");
+  }
+
   function saveAddress() {
-    const trimmed = value.trim();
+    const trimmed = selectedValues.length === 1 ? selectedValues[0] : "";
     if (!validAddress(trimmed, kind)) {
       onError(
-        kind === "evm"
-          ? "Enter a valid EVM address before saving."
-          : kind === "tron"
-            ? "Enter a valid TRON address before saving."
-            : "Enter a valid Solana address before saving."
+        parameter.multiple && selectedValues.length > 1
+          ? "Save addresses one at a time. Your current multi-selection is unchanged."
+          : kind === "evm"
+            ? "Enter a valid EVM address before saving."
+            : kind === "tron"
+              ? "Enter a valid TRON address before saving."
+              : "Enter a valid Solana address before saving."
       );
       return;
     }
@@ -437,27 +492,114 @@ function AddressField({
   }
 
   return (
-    <label className="block text-sm text-zinc-300">
-      <span className="flex items-center gap-1.5">
+    <div className="block text-sm text-zinc-300">
+      <label
+        htmlFor={`sheets-${parameter.key}`}
+        className="flex items-center gap-1.5"
+      >
         {parameter.label}
         {parameter.required ? (
           <span className="text-amber-300" aria-label="required field">
             *
           </span>
         ) : null}
-      </span>
+      </label>
       <div className="mt-1.5 flex min-w-0 gap-1.5">
-        <div className="flex min-w-0 flex-1 overflow-hidden rounded-lg border border-white/10 bg-black/50 transition focus-within:border-violet-400/60 focus-within:ring-2 focus-within:ring-violet-400/10">
+        <div className="flex min-w-0 flex-1 overflow-visible rounded-lg border border-white/10 bg-black/50 transition focus-within:border-violet-400/60 focus-within:ring-2 focus-within:ring-violet-400/10">
           <input
+            id={`sheets-${parameter.key}`}
             type="text"
             value={value}
             onChange={(event) => onChange(event.target.value)}
-            placeholder={parameter.placeholder}
+            placeholder={
+              parameter.multiple
+                ? `${parameter.placeholder ?? "Wallet address"}, …`
+                : parameter.placeholder
+            }
             autoComplete="off"
             spellCheck={false}
             className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600"
           />
-          {accountWallets.length > 0 || addresses.length > 0 ? (
+          {walletOptions.length > 0 && parameter.multiple ? (
+            <details className="group relative flex w-12 shrink-0 border-l border-white/10 bg-white/[0.035]">
+              <summary
+                aria-label={`Choose ${kind} wallets`}
+                className="flex h-full min-h-9 cursor-pointer list-none items-center justify-center gap-1 text-zinc-400 [&::-webkit-details-marker]:hidden"
+              >
+                {selectedValues.length > 0 ? (
+                  <span className="rounded bg-violet-400/15 px-1 text-[10px] font-semibold text-violet-200">
+                    {selectedValues.length}
+                  </span>
+                ) : null}
+                <svg
+                  viewBox="0 0 20 20"
+                  aria-hidden="true"
+                  className="h-4 w-4 transition group-open:rotate-180"
+                >
+                  <path
+                    d="m5 7.5 5 5 5-5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.7"
+                  />
+                </svg>
+              </summary>
+              <div className="absolute right-0 top-[calc(100%+0.5rem)] z-40 max-h-80 w-80 max-w-[85vw] overflow-y-auto rounded-xl border border-white/15 bg-[#151517] p-2 shadow-2xl shadow-black/70">
+                <div className="flex items-center justify-between px-2 pb-2 pt-1">
+                  <p className="text-xs font-medium text-zinc-300">
+                    Choose wallets
+                  </p>
+                  {selectedValues.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => onChange("")}
+                      className="text-[11px] text-zinc-500 transition hover:text-zinc-200"
+                    >
+                      Clear
+                    </button>
+                  ) : null}
+                </div>
+                {["Authorized wallets", "Saved in this browser"].map(
+                  (group) => {
+                    const options = walletOptions.filter(
+                      (option) => option.group === group
+                    );
+                    if (options.length === 0) return null;
+                    return (
+                      <div key={group} className="border-t border-white/5 py-1.5">
+                        <p className="px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-zinc-600">
+                          {group}
+                        </p>
+                        {options.map((option) => {
+                          const checked = normalizedSelections.has(
+                            normalizedAddress(option.value, kind)
+                          );
+                          return (
+                            <label
+                              key={option.id}
+                              className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-zinc-300 transition hover:bg-white/5"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleAddress(option.value)}
+                                className="h-4 w-4 shrink-0 accent-violet-500"
+                              />
+                              <span className="min-w-0 truncate">
+                                {option.label}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    );
+                  }
+                )}
+              </div>
+            </details>
+          ) : walletOptions.length > 0 ? (
             <span className="relative flex w-11 shrink-0 border-l border-white/10 bg-white/[0.035]">
               <select
                 aria-label={`Choose a ${kind} wallet`}
@@ -515,7 +657,12 @@ function AddressField({
         <button
           type="button"
           onClick={saveAddress}
-          disabled={!value.trim()}
+          disabled={selectedValues.length !== 1}
+          title={
+            selectedValues.length > 1
+              ? "Save addresses one at a time"
+              : undefined
+          }
           className="shrink-0 rounded-md border border-violet-400/20 bg-violet-400/10 px-2.5 py-1.5 text-xs font-medium text-violet-200 transition hover:bg-violet-400/20 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {selectedAddress ? "Rename" : "Save"}
@@ -537,7 +684,7 @@ function AddressField({
           {parameter.help}
         </span>
       ) : null}
-    </label>
+    </div>
   );
 }
 

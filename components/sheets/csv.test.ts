@@ -123,6 +123,28 @@ describe("buildStableValueUrl", () => {
 
 
 describe("short value resources", () => {
+  it("stores a multi-wallet stablecoin selection in one resource", () => {
+    const descriptor = buildValueResourceDescriptor({
+      source: "stablecoins",
+      sourceUrl:
+        "https://hunt.data.lisacorp.com/stablecoins/balances.csv?" +
+        "address=0x6272ab4f91e0df14acb6a2a311d817381210e339%2C" +
+        "0x94ce9ae15c739552eebb8a8746c0ca33c3d369ce&chain_id=1",
+      rows,
+      rowIndex: 1,
+      columnIndex: 2,
+      keyColumn: "balance_id",
+      credentialParameters: [],
+    });
+
+    expect(descriptor?.request.parameters).toEqual({
+      address:
+        "0x6272ab4f91e0df14acb6a2a311d817381210e339," +
+        "0x94ce9ae15c739552eebb8a8746c0ca33c3d369ce",
+      chain_id: "1",
+    });
+  });
+
   it("keeps credentials out of the stored resource request", () => {
     const descriptor = buildValueResourceDescriptor({
       source: "coinbase",
