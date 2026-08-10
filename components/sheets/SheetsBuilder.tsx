@@ -114,7 +114,7 @@ function shortAddress(value: string) {
 }
 
 function parameterInputClass() {
-  return "mt-2 w-full rounded-xl border border-white/10 bg-black/50 px-3.5 py-3 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-violet-400/60 focus:ring-2 focus:ring-violet-400/10";
+  return "mt-1.5 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-violet-400/60 focus:ring-2 focus:ring-violet-400/10";
 }
 
 function errorMessage(content: string) {
@@ -139,12 +139,12 @@ function ParameterField({
 }) {
   if (parameter.kind === "boolean") {
     return (
-      <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-black/30 p-3.5">
+      <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-white/10 bg-black/30 px-3 py-2.5">
         <input
           type="checkbox"
           checked={value === "true"}
           onChange={(event) => onChange(String(event.target.checked))}
-          className="mt-0.5 h-4 w-4 accent-violet-500"
+          className="h-4 w-4 accent-violet-500"
         />
         <span className="text-sm text-zinc-300">{parameter.label}</span>
       </label>
@@ -178,7 +178,7 @@ function ParameterField({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={parameter.placeholder}
-          rows={4}
+          rows={3}
           spellCheck={false}
           className={`${parameterInputClass()} resize-y font-mono text-xs`}
         />
@@ -200,7 +200,7 @@ function ParameterField({
         />
       )}
       {parameter.help ? (
-        <span className="mt-1.5 block text-xs leading-5 text-zinc-500">
+        <span className="mt-1 block text-xs leading-4 text-zinc-500">
           {parameter.help}
         </span>
       ) : null}
@@ -284,7 +284,7 @@ function SavedAddressPicker({
   }
 
   return (
-    <div className="mt-2 rounded-xl border border-white/[0.07] bg-white/[0.025] p-2.5">
+    <div className="mt-1.5 rounded-lg border border-white/[0.07] bg-white/[0.025] p-2">
       <div className="flex gap-2">
         <select
           aria-label={
@@ -292,7 +292,7 @@ function SavedAddressPicker({
           }
           value={selectedAddress?.id ?? ""}
           onChange={(event) => selectAddress(event.target.value)}
-          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/60 px-3 py-2 text-xs text-zinc-300 outline-none transition focus:border-violet-400/50"
+          className="min-w-0 flex-1 rounded-md border border-white/10 bg-black/60 px-2.5 py-1.5 text-xs text-zinc-300 outline-none transition focus:border-violet-400/50"
         >
           <option value="">
             {addresses.length > 0
@@ -309,12 +309,12 @@ function SavedAddressPicker({
           type="button"
           onClick={saveAddress}
           disabled={!value.trim()}
-          className="shrink-0 rounded-lg border border-violet-400/20 bg-violet-400/10 px-3 py-2 text-xs font-medium text-violet-200 transition hover:bg-violet-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+          className="shrink-0 rounded-md border border-violet-400/20 bg-violet-400/10 px-2.5 py-1.5 text-xs font-medium text-violet-200 transition hover:bg-violet-400/20 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {selectedAddress ? "Rename" : "Save"}
         </button>
       </div>
-      <div className="mt-2 flex items-center justify-between gap-3 px-1">
+      <div className="mt-1 flex items-center justify-between gap-3 px-0.5">
         <span className="text-[11px] text-zinc-600">
           Stored only in this browser&apos;s localStorage
         </span>
@@ -525,35 +525,36 @@ export default function SheetsBuilder() {
   }
 
   return (
-    <main className="min-h-screen bg-black px-4 pb-16 pt-24 text-white sm:px-6">
+    <main className="min-h-screen bg-black px-4 pb-8 pt-20 text-white sm:px-6">
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute left-[8%] top-20 h-72 w-72 rounded-full bg-violet-600/10 blur-[110px]" />
         <div className="absolute right-[6%] top-56 h-80 w-80 rounded-full bg-blue-500/10 blur-[120px]" />
       </div>
 
       <div className="relative mx-auto max-w-[1800px]">
-        <div className="mb-8 max-w-3xl">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-violet-200">
-            Google Sheets helper
+        <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="mb-1.5 inline-flex items-center rounded-full border border-violet-400/20 bg-violet-400/10 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.16em] text-violet-200">
+              Google Sheets helper
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              One value, straight into your spreadsheet
+            </h1>
           </div>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">
-            One value, straight into your spreadsheet
-          </h1>
-          <p className="mt-4 text-base leading-7 text-zinc-400 sm:text-lg">
-            Choose a source, load the data, and click the cell you need. The
-            builder will create a formula you can paste directly into Google
-            Sheets.
+          <p className="max-w-2xl text-sm leading-5 text-zinc-500 lg:text-right">
+            Choose a source, load the data, and click a cell to copy its Google
+            Sheets formula.
           </p>
         </div>
 
-        <div className="space-y-6">
-          <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 shadow-2xl shadow-black/30 sm:p-6">
-            <div className="mb-5 flex items-center justify-between">
+        <div className="space-y-4">
+          <section className="rounded-xl border border-white/10 bg-white/[0.035] p-4 shadow-2xl shadow-black/30">
+            <div className="mb-3 flex items-center justify-between">
               <h2 className="font-medium text-white">1. Data source</h2>
               <span className="text-xs text-zinc-500">{sheetSources.length} CSV</span>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-[minmax(260px,360px)_minmax(0,1fr)]">
+            <div className="grid gap-4 lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)]">
               <div>
                 <label className="block text-sm text-zinc-300">
                   Table
@@ -576,12 +577,12 @@ export default function SheetsBuilder() {
                   </select>
                 </label>
 
-                <p className="mt-3 text-sm leading-6 text-zinc-500">
+                <p className="mt-2 text-xs leading-5 text-zinc-500">
                   {source.description}
                 </p>
               </div>
 
-              <div className="grid content-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid content-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {source.parameters.map((parameter) => {
                   const kind = addressKind(parameter);
                   return (
@@ -605,19 +606,19 @@ export default function SheetsBuilder() {
               </div>
             </div>
 
-            <div className="mt-5 flex flex-col gap-4 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
-              <p className="max-w-2xl text-xs leading-5 text-zinc-600">
+            <div className="mt-3 flex flex-col gap-3 border-t border-white/10 pt-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="max-w-2xl text-[11px] leading-4 text-zinc-600">
                 {source.usesServerCredentials
                   ? "Credentials are stored by the service and will not be included in the formula URL."
                   : "Tokens and keys will be included in the formula URL. Do not publish or share access to a sheet containing these formulas."}
               </p>
 
-              <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
+              <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
                 {source.usesDataHuntToken ? (
                   <button
                     type="button"
                     onClick={useAccountToken}
-                    className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
+                    className="rounded-lg border border-white/10 bg-white/5 px-3.5 py-2 text-sm text-zinc-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
                   >
                     Use account token
                   </button>
@@ -627,7 +628,7 @@ export default function SheetsBuilder() {
                   type="button"
                   onClick={loadTable}
                   disabled={loading}
-                  className="flex min-w-48 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-950/30 transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
+                  className="flex min-w-40 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-violet-500 to-blue-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-violet-950/30 transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
                 >
                   {loading ? (
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
@@ -638,18 +639,18 @@ export default function SheetsBuilder() {
             </div>
           </section>
 
-          <div className="min-w-0 space-y-6">
+          <div className="min-w-0 space-y-4">
             {error ? (
               <div
                 role="alert"
-                className="rounded-2xl border border-red-400/20 bg-red-400/10 px-5 py-4 text-sm text-red-200"
+                className="rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200"
               >
                 {error}
               </div>
             ) : null}
 
-            <section className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
-              <div className="flex flex-col gap-3 border-b border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <section className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.025]">
+              <div className="flex flex-col gap-2 border-b border-white/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="font-medium text-white">2. Select a cell</h2>
                   <p className="mt-1 text-xs text-zinc-500">
@@ -674,7 +675,7 @@ export default function SheetsBuilder() {
               </div>
 
               {rows.length > 0 ? (
-                <div className="max-h-[640px] overflow-auto">
+                <div className="max-h-[520px] overflow-auto">
                   <table className="min-w-full border-separate border-spacing-0 text-left text-xs">
                     <tbody>
                       {rows.map((row, rowIndex) => (
@@ -700,7 +701,7 @@ export default function SheetsBuilder() {
                                   onClick={() =>
                                     selectCellAndCopyFormula(rowIndex, columnIndex)
                                   }
-                                  className={`block min-w-full whitespace-nowrap px-3 py-2.5 text-left outline-none transition ${
+                                  className={`block min-w-full whitespace-nowrap px-3 py-2 text-left outline-none transition ${
                                     rowIndex === 0
                                       ? "font-medium text-zinc-300"
                                       : "font-mono text-zinc-400 hover:bg-violet-400/10 hover:text-white"
@@ -722,8 +723,8 @@ export default function SheetsBuilder() {
                   </table>
                 </div>
               ) : (
-                <div className="flex min-h-72 flex-col items-center justify-center px-6 text-center">
-                  <div className="mb-4 grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-white/5 font-mono text-lg text-zinc-500">
+                <div className="flex min-h-40 flex-col items-center justify-center px-6 text-center">
+                  <div className="mb-2 grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/5 font-mono text-sm text-zinc-500">
                     fx
                   </div>
                   <p className="text-sm text-zinc-400">Your table will appear here</p>
@@ -735,13 +736,13 @@ export default function SheetsBuilder() {
             </section>
 
             {selectedCell && formula ? (
-              <section className="rounded-2xl border border-violet-400/20 bg-gradient-to-br from-violet-500/[0.09] to-blue-500/[0.04] p-5 sm:p-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <section className="rounded-xl border border-violet-400/20 bg-gradient-to-br from-violet-500/[0.09] to-blue-500/[0.04] p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="text-xs font-medium uppercase tracking-[0.16em] text-violet-300">
                       Selected
                     </p>
-                    <h2 className="mt-2 text-xl font-semibold text-white">
+                    <h2 className="mt-1 text-lg font-semibold text-white">
                       {selectedHeader || "Single value"}
                     </h2>
                     <p className="mt-1 max-w-xl break-all font-mono text-sm text-zinc-400">
@@ -757,7 +758,7 @@ export default function SheetsBuilder() {
                   </button>
                 </div>
 
-                <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {supportsStableFormula ? (
                     <label className="text-xs text-zinc-400">
                       Value retrieval method
@@ -791,22 +792,22 @@ export default function SheetsBuilder() {
                   </label>
                 </div>
 
-                <label className="mt-5 block text-xs text-zinc-400">
+                <label className="mt-3 block text-xs text-zinc-400">
                   Ready-to-use formula
                   <textarea
                     readOnly
                     value={formula}
                     onFocus={(event) => event.target.select()}
-                    rows={5}
-                    className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-black/50 p-4 font-mono text-xs leading-5 text-violet-100 outline-none focus:border-violet-400/50"
+                    rows={3}
+                    className="mt-1.5 w-full resize-none rounded-lg border border-white/10 bg-black/50 p-3 font-mono text-xs leading-5 text-violet-100 outline-none focus:border-violet-400/50"
                   />
                 </label>
 
-                <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                   <button
                     type="button"
                     onClick={() => copyText(formula, "formula")}
-                    className="flex-1 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-violet-100"
+                    className="flex-1 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-violet-100"
                   >
                     {copied === "formula"
                       ? "Formula copied"
@@ -815,7 +816,7 @@ export default function SheetsBuilder() {
                   <button
                     type="button"
                     onClick={() => copyText(selectedImportUrl, "url")}
-                    className="rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm text-zinc-300 transition hover:bg-white/10 hover:text-white"
+                    className="rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-zinc-300 transition hover:bg-white/10 hover:text-white"
                   >
                     {copied === "url"
                       ? "URL copied"
@@ -825,7 +826,7 @@ export default function SheetsBuilder() {
                   </button>
                 </div>
 
-                <p className="mt-4 text-xs leading-5 text-zinc-500">
+                <p className="mt-3 text-xs leading-4 text-zinc-500">
                   {stableFormula && stableValueUrl
                     ? "The value route finds the row by its stable ID on every request and returns only that cell. Changes to row order or count do not affect the link."
                     : "Paste the formula into an empty Google Sheets cell. The server caches CSV data in memory for at least 60 seconds; Google Sheets may refresh imports on its own schedule."}
