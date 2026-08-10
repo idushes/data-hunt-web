@@ -48,6 +48,14 @@ export default function Header() {
                         >
                             Ideas
                         </Link>
+                        <Link
+                            href="/sheets"
+                            aria-label="Open Google Sheets helper"
+                            className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-black transition-all hover:bg-violet-100 sm:px-4"
+                        >
+                            <span className="sm:hidden">Sheets</span>
+                            <span className="hidden sm:inline">Open Sheets helper</span>
+                        </Link>
                         {isAuthenticated ? (
                             <Link
                                 href="/account"
@@ -66,14 +74,6 @@ export default function Header() {
                                 <span className="hidden sm:inline">Sign & Login</span>
                             </button>
                         )}
-                        <Link
-                            href="/sheets"
-                            aria-label="Open Google Sheets helper"
-                            className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-black transition-all hover:bg-violet-100 sm:px-4"
-                        >
-                            <span className="sm:hidden">Sheets</span>
-                            <span className="hidden sm:inline">Open Sheets helper</span>
-                        </Link>
                     </div>
                 </div>
             </header>
