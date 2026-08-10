@@ -214,6 +214,28 @@ export const sheetSources: SheetSource[] = [
     parameters: [evmAddress],
   },
   {
+    id: "gmx",
+    name: "GMX V2 positions",
+    group: "DeFi",
+    description:
+      "Open perpetual positions with collateral, size, leverage, PnL, fees, and claimable funding.",
+    path: "/gmx/positions.csv",
+    keyColumn: "position_id",
+    parameters: [
+      evmAddress,
+      {
+        key: "chain_id",
+        label: "Network",
+        kind: "select",
+        defaultValue: "42161",
+        options: [
+          { label: "Arbitrum", value: "42161" },
+          { label: "Avalanche", value: "43114" },
+        ],
+      },
+    ],
+  },
+  {
     id: "uniswap",
     name: "Uniswap V3 positions",
     group: "DeFi",
