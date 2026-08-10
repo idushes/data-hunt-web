@@ -40,6 +40,7 @@ export default function Hero() {
           <div className="mt-9 flex flex-wrap gap-2 text-xs text-zinc-500">
             {[
               "No wallet connect",
+              "Saved + authorized wallets",
               "60s cache",
               "Stable cells",
             ].map((item) => (

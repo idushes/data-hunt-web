@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   initialParameterValues,
   sheetSources,
@@ -11,6 +11,10 @@ import {
   buildStableValueUrl,
   parseCsv,
 } from "@/components/sheets/csv";
+import {
+  parseAuthorizedWallets,
+  type AuthorizedWallet,
+} from "@/components/sheets/addresses";
 
 const API_BASE_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? "https://hunt.data.lisacorp.com"
@@ -34,6 +38,7 @@ type SavedAddress = {
 
 const SAVED_ADDRESSES_KEY = "datahunt:sheets:saved-addresses:v1";
 const SAVED_ADDRESSES_EVENT = "datahunt:sheets:saved-addresses-changed";
+const AUTH_CHANGED_EVENT = "data-hunt-auth";
 const EMPTY_SAVED_ADDRESSES = "[]";
 const COINBASE_CAPSULE_STORAGE_KEY = "datahunt:coinbase:capsule:v1";
 
@@ -87,6 +92,58 @@ function useSavedAddresses() {
     serverSavedAddressesSnapshot
   );
   return useMemo(() => parseSavedAddresses(snapshot), [snapshot]);
+}
+
+function useAuthorizedWallets() {
+  const [wallets, setWallets] = useState<AuthorizedWallet[]>([]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadWallets() {
+      const token = localStorage.getItem("data_hunt_token");
+      if (!token) {
+        if (active) setWallets([]);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/web3/addresses`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          if (active) setWallets([]);
+          return;
+        }
+        const payload: unknown = await response.json();
+        if (active) setWallets(parseAuthorizedWallets(payload));
+      } catch {
+        if (active) setWallets([]);
+      }
+    }
+
+    function refreshWallets() {
+      void loadWallets();
+    }
+
+    function handleStorage(event: StorageEvent) {
+      if (event.key === "data_hunt_token") refreshWallets();
+    }
+
+    refreshWallets();
+    window.addEventListener(AUTH_CHANGED_EVENT, refreshWallets);
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("focus", refreshWallets);
+    return () => {
+      active = false;
+      window.removeEventListener(AUTH_CHANGED_EVENT, refreshWallets);
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("focus", refreshWallets);
+    };
+  }, []);
+
+  return wallets;
 }
 
 function storeSavedAddresses(addresses: SavedAddress[]) {
@@ -213,28 +270,32 @@ function ParameterField({
   );
 }
 
-function SavedAddressPicker({
+function AddressField({
+  parameter,
   kind,
   value,
+  authorizedWallets,
   onChange,
   onError,
 }: {
+  parameter: SheetParameter;
   kind: AddressKind;
   value: string;
+  authorizedWallets: AuthorizedWallet[];
   onChange: (value: string) => void;
   onError: (message: string) => void;
 }) {
   const allAddresses = useSavedAddresses();
   const addresses = allAddresses.filter((address) => address.kind === kind);
+  const accountWallets = kind === "evm" ? authorizedWallets : [];
   const normalizedValue = normalizedAddress(value, kind);
   const selectedAddress = addresses.find(
     (address) => normalizedAddress(address.value, kind) === normalizedValue
   );
 
-  function selectAddress(id: string) {
-    const address = addresses.find((candidate) => candidate.id === id);
+  function selectAddress(address: string) {
     if (!address) return;
-    onChange(address.value);
+    onChange(address);
     onError("");
   }
 
@@ -291,31 +352,81 @@ function SavedAddressPicker({
   }
 
   return (
-    <div className="mt-1.5 rounded-lg border border-white/[0.07] bg-white/[0.025] p-2">
-      <div className="flex gap-2">
-        <select
-          aria-label={
-            kind === "evm"
-              ? "Saved EVM addresses"
-              : kind === "tron"
-                ? "Saved TRON addresses"
-                : "Saved Solana addresses"
-          }
-          value={selectedAddress?.id ?? ""}
-          onChange={(event) => selectAddress(event.target.value)}
-          className="min-w-0 flex-1 rounded-md border border-white/10 bg-black/60 px-2.5 py-1.5 text-xs text-zinc-300 outline-none transition focus:border-violet-400/50"
-        >
-          <option value="">
-            {addresses.length > 0
-              ? "Select a saved address"
-              : "No saved addresses yet"}
-          </option>
-          {addresses.map((address) => (
-            <option key={address.id} value={address.id}>
-              {address.label} · {shortAddress(address.value)}
-            </option>
-          ))}
-        </select>
+    <label className="block text-sm text-zinc-300">
+      <span className="flex items-center gap-1.5">
+        {parameter.label}
+        {parameter.required ? (
+          <span className="text-amber-300" aria-label="required field">
+            *
+          </span>
+        ) : null}
+      </span>
+      <div className="mt-1.5 flex min-w-0 gap-1.5">
+        <div className="flex min-w-0 flex-1 overflow-hidden rounded-lg border border-white/10 bg-black/50 transition focus-within:border-violet-400/60 focus-within:ring-2 focus-within:ring-violet-400/10">
+          <input
+            type="text"
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            placeholder={parameter.placeholder}
+            autoComplete="off"
+            spellCheck={false}
+            className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600"
+          />
+          {accountWallets.length > 0 || addresses.length > 0 ? (
+            <span className="relative flex w-11 shrink-0 border-l border-white/10 bg-white/[0.035]">
+              <select
+                aria-label={`Choose a ${kind} wallet`}
+                value=""
+                onChange={(event) => selectAddress(event.target.value)}
+                className="absolute inset-0 z-10 h-full w-full cursor-pointer appearance-none text-transparent outline-none"
+              >
+                <option value="" className="text-zinc-900">
+                  Choose wallet
+                </option>
+                {accountWallets.length > 0 ? (
+                  <optgroup label="Authorized wallets" className="text-zinc-900">
+                    {accountWallets.map((wallet) => (
+                      <option
+                        key={`account:${wallet.id}`}
+                        value={wallet.address}
+                        className="text-zinc-900"
+                      >
+                        {wallet.network.toUpperCase()} · {shortAddress(wallet.address)}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null}
+                {addresses.length > 0 ? (
+                  <optgroup label="Saved in this browser" className="text-zinc-900">
+                    {addresses.map((address) => (
+                      <option
+                        key={`saved:${address.id}`}
+                        value={address.value}
+                        className="text-zinc-900"
+                      >
+                        {address.label} · {shortAddress(address.value)}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null}
+              </select>
+              <svg
+                viewBox="0 0 20 20"
+                aria-hidden="true"
+                className="pointer-events-none m-auto h-4 w-4 text-zinc-400"
+              >
+                <path
+                  d="m5 7.5 5 5 5-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.7"
+                />
+              </svg>
+            </span>
+          ) : null}
+        </div>
         <button
           type="button"
           onClick={saveAddress}
@@ -324,27 +435,30 @@ function SavedAddressPicker({
         >
           {selectedAddress ? "Rename" : "Save"}
         </button>
-      </div>
-      <div className="mt-1 flex items-center justify-between gap-3 px-0.5">
-        <span className="text-[11px] text-zinc-600">
-          Stored only in this browser&apos;s localStorage
-        </span>
         {selectedAddress ? (
           <button
             type="button"
             onClick={removeAddress}
-            className="text-[11px] text-zinc-500 transition hover:text-red-300"
+            aria-label={`Remove ${selectedAddress.label} from saved addresses`}
+            title="Remove saved address"
+            className="shrink-0 rounded-lg border border-white/10 px-3 text-sm text-zinc-500 transition hover:border-red-400/20 hover:text-red-300"
           >
-            Remove
+            ×
           </button>
         ) : null}
       </div>
-    </div>
+      {parameter.help ? (
+        <span className="mt-1 block text-xs leading-4 text-zinc-500">
+          {parameter.help}
+        </span>
+      ) : null}
+    </label>
   );
 }
 
 export default function SheetsBuilder() {
   const defaultSource = sheetSources[0];
+  const authorizedWallets = useAuthorizedWallets();
   const [sourceId, setSourceId] = useState(defaultSource.id);
   const [values, setValues] = useState<Record<string, string>>(() =>
     initialParameterValues(defaultSource)
@@ -645,24 +759,27 @@ export default function SheetsBuilder() {
                       !(source.id === "coinbase" && parameter.key === "capsule")
                   )
                   .map((parameter) => {
-                  const kind = addressKind(parameter);
-                  return (
-                    <div key={parameter.key} className="min-w-0">
-                      <ParameterField
-                        parameter={parameter}
-                        value={values[parameter.key] ?? ""}
-                        onChange={(value) => updateValue(parameter.key, value)}
-                      />
-                      {kind ? (
-                        <SavedAddressPicker
-                          kind={kind}
-                          value={values[parameter.key] ?? ""}
-                          onChange={(value) => updateValue(parameter.key, value)}
-                          onError={setError}
-                        />
-                      ) : null}
-                    </div>
-                  );
+                    const kind = addressKind(parameter);
+                    return (
+                      <div key={parameter.key} className="min-w-0">
+                        {kind ? (
+                          <AddressField
+                            parameter={parameter}
+                            kind={kind}
+                            value={values[parameter.key] ?? ""}
+                            authorizedWallets={authorizedWallets}
+                            onChange={(value) => updateValue(parameter.key, value)}
+                            onError={setError}
+                          />
+                        ) : (
+                          <ParameterField
+                            parameter={parameter}
+                            value={values[parameter.key] ?? ""}
+                            onChange={(value) => updateValue(parameter.key, value)}
+                          />
+                        )}
+                      </div>
+                    );
                   })}
                 {source.id === "coinbase" ? (
                   <div className="min-w-0 sm:col-span-2 xl:col-span-3">
