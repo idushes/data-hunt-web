@@ -718,6 +718,29 @@ export const sheetSources: SheetSource[] = [
       },
     ],
   },
+  {
+    id: "binance",
+    name: "Binance account",
+    group: "Exchanges",
+    description:
+      "Non-zero Spot balances with USD values and available USD-M Futures balances and positions from a read-only key.",
+    path: "/binance/account.csv",
+    keyColumn: "id",
+    parameters: [
+      {
+        key: "capsule",
+        label: "Encrypted Binance access key",
+        kind: "secret",
+        required: true,
+      },
+      {
+        key: "include_futures",
+        label: "Include USD-M Futures",
+        kind: "boolean",
+        defaultValue: "true",
+      },
+    ],
+  },
 ];
 
 export function initialParameterValues(source: SheetSource) {

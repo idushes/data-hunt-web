@@ -33,7 +33,8 @@ type CopyTarget =
   | "url"
   | "coinbase-main"
   | "coinbase-intx"
-  | "bybit";
+  | "bybit"
+  | "binance";
 
 type AddressKind = "evm" | "solana" | "tron";
 
@@ -52,6 +53,7 @@ const COINBASE_CAPSULE_STORAGE_KEY = "datahunt:coinbase:capsule:v1";
 const COINBASE_INTX_CAPSULE_STORAGE_KEY =
   "datahunt:coinbase:intx-capsule:v1";
 const BYBIT_CAPSULE_STORAGE_KEY = "datahunt:bybit:capsule:v1";
+const BINANCE_CAPSULE_STORAGE_KEY = "datahunt:binance:capsule:v1";
 const SHEETS_ACCESS_STORAGE_KEY = "datahunt:sheets:access:v1";
 
 type StoredSheetsAccess = {
@@ -883,6 +885,10 @@ export default function SheetsBuilder() {
   const [bybitApiSecret, setBybitApiSecret] = useState("");
   const [editingBybitKey, setEditingBybitKey] = useState(false);
   const [generatingBybitKey, setGeneratingBybitKey] = useState(false);
+  const [binanceApiKey, setBinanceApiKey] = useState("");
+  const [binanceApiSecret, setBinanceApiSecret] = useState("");
+  const [editingBinanceKey, setEditingBinanceKey] = useState(false);
+  const [generatingBinanceKey, setGeneratingBinanceKey] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
@@ -1128,6 +1134,9 @@ export default function SheetsBuilder() {
     } else if (nextSource.id === "bybit") {
       nextValues.capsule =
         localStorage.getItem(BYBIT_CAPSULE_STORAGE_KEY) ?? "";
+    } else if (nextSource.id === "binance") {
+      nextValues.capsule =
+        localStorage.getItem(BINANCE_CAPSULE_STORAGE_KEY) ?? "";
     }
 
     setSourceId(nextSource.id);
@@ -1147,6 +1156,9 @@ export default function SheetsBuilder() {
     setBybitApiKey("");
     setBybitApiSecret("");
     setEditingBybitKey(false);
+    setBinanceApiKey("");
+    setBinanceApiSecret("");
+    setEditingBinanceKey(false);
   }
 
   function updateValue(key: string, value: string) {
@@ -1381,6 +1393,61 @@ export default function SheetsBuilder() {
     setError("");
   }
 
+  async function generateBinanceCapsule() {
+    const apiKey = binanceApiKey.trim();
+    const apiSecret = binanceApiSecret.trim();
+    if (!apiKey || !apiSecret) {
+      setError("Enter both the Binance API key and API secret.");
+      return;
+    }
+
+    setGeneratingBinanceKey(true);
+    setError("");
+    try {
+      const loginToken = activeLoginToken();
+      if (!loginToken) {
+        throw new Error("Sign in before encrypting a Binance access key.");
+      }
+      const response = await fetch(`${API_BASE_URL}/binance/capsule`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${loginToken}`,
+        },
+        body: JSON.stringify({ api_key: apiKey, api_secret: apiSecret }),
+        cache: "no-store",
+      });
+      const content = await response.text();
+      if (!response.ok) throw new Error(errorMessage(content));
+
+      const payload = JSON.parse(content) as { capsule?: unknown };
+      if (typeof payload.capsule !== "string" || !payload.capsule) {
+        throw new Error("The API did not return an encrypted access key.");
+      }
+
+      localStorage.setItem(BINANCE_CAPSULE_STORAGE_KEY, payload.capsule);
+      updateValue("capsule", payload.capsule);
+      setBinanceApiKey("");
+      setBinanceApiSecret("");
+      setEditingBinanceKey(false);
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Unable to generate the encrypted access key"
+      );
+    } finally {
+      setGeneratingBinanceKey(false);
+    }
+  }
+
+  function removeBinanceCapsule() {
+    localStorage.removeItem(BINANCE_CAPSULE_STORAGE_KEY);
+    updateValue("capsule", "");
+    setEditingBinanceKey(true);
+    setError("");
+  }
+
   async function copyText(text: string, target: CopyTarget) {
     try {
       await navigator.clipboard.writeText(text);
@@ -1464,6 +1531,8 @@ export default function SheetsBuilder() {
                           (parameter.key === "capsule" ||
                             parameter.key === "intx_capsule")) ||
                         (source.id === "bybit" &&
+                          parameter.key === "capsule") ||
+                        (source.id === "binance" &&
                           parameter.key === "capsule")
                       )
                   )
@@ -1564,12 +1633,42 @@ export default function SheetsBuilder() {
                     />
                   </div>
                 ) : null}
+                {source.id === "binance" ? (
+                  <div className="min-w-0 sm:col-span-2 xl:col-span-3">
+                    <CredentialKeyCard
+                      title="Binance account"
+                      description="Non-zero Spot balances and available USD-M Futures data. Raw credentials are discarded after validation."
+                      capsule={values.capsule ?? ""}
+                      keyName={binanceApiKey}
+                      keySecret={binanceApiSecret}
+                      editing={editingBinanceKey}
+                      generating={generatingBinanceKey}
+                      copied={copied === "binance"}
+                      keyLabel="API key"
+                      keyPlaceholder="Binance API key"
+                      secretLabel="Secret key"
+                      secretPlaceholder="Binance secret key"
+                      permissionLabel="Read-only key required"
+                      onKeyNameChange={setBinanceApiKey}
+                      onKeySecretChange={setBinanceApiSecret}
+                      onGenerate={() => void generateBinanceCapsule()}
+                      onCopy={() =>
+                        void copyText(values.capsule ?? "", "binance")
+                      }
+                      onEdit={() => setEditingBinanceKey(true)}
+                      onCancel={() => setEditingBinanceKey(false)}
+                      onRemove={removeBinanceCapsule}
+                    />
+                  </div>
+                ) : null}
               </div>
             </div>
 
             <div className="mt-3 flex flex-col gap-3 border-t border-white/10 pt-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="max-w-2xl text-[11px] leading-4 text-zinc-600">
-                {source.id === "coinbase" || source.id === "bybit"
+                {source.id === "coinbase" ||
+                source.id === "bybit" ||
+                source.id === "binance"
                   ? "Encrypted access keys stay in this browser. They are added only to the short formula URL and are never stored with the resource."
                   : "Tokens and keys are added only to the formula URL and are never stored with the resource. Do not share sheets containing credentials."}
               </p>

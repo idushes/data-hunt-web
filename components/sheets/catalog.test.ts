@@ -24,6 +24,7 @@ const publishedSources = {
   paradex: ["/paradex/balance", "account"],
   coinbase: ["/coinbase/balance", "id"],
   bybit: ["/bybit/account.csv", "id"],
+  binance: ["/binance/account.csv", "id"],
   "gmtrade-assets": ["/solana/gmtrade.csv", "mint"],
   "jupiter-jlp": ["/jupiter/jlp.csv", "position_id"],
   "gmtrade-perps": ["/solana/gmtrade-perps.csv", "position_address"],
@@ -112,6 +113,20 @@ describe("Sheets source catalog contract", () => {
     expect(capsule).toMatchObject({ kind: "secret", required: true });
     expect(
       bybit?.parameters.some((parameter) =>
+        ["api_key", "api_secret"].includes(parameter.key)
+      )
+    ).toBe(false);
+  });
+
+  it("requires an encrypted browser-held access key for Binance", () => {
+    const binance = sheetSources.find((source) => source.id === "binance");
+    const capsule = binance?.parameters.find(
+      (parameter) => parameter.key === "capsule"
+    );
+
+    expect(capsule).toMatchObject({ kind: "secret", required: true });
+    expect(
+      binance?.parameters.some((parameter) =>
         ["api_key", "api_secret"].includes(parameter.key)
       )
     ).toBe(false);
