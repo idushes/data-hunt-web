@@ -335,6 +335,34 @@ export const sheetSources: SheetSource[] = [
     ],
   },
   {
+    id: "pancakeswap",
+    name: "PancakeSwap V3 positions",
+    group: "DeFi",
+    description:
+      "PancakeSwap V3 NFT positions: current amounts, price range, in-range status, USD value, and claimable fees.",
+    path: "/pancakeswap/positions.csv",
+    keyColumn: "position_id",
+    parameters: [
+      evmAddress,
+      {
+        key: "chain_id",
+        label: "Network",
+        kind: "select",
+        defaultValue: "56",
+        options: [
+          { label: "BNB Chain", value: "56" },
+          { label: "Ethereum", value: "1" },
+        ],
+      },
+      {
+        key: "include_closed",
+        label: "Include closed positions",
+        kind: "boolean",
+        defaultValue: "false",
+      },
+    ],
+  },
+  {
     id: "stablecoins",
     name: "Stablecoin balances",
     group: "Wallets",

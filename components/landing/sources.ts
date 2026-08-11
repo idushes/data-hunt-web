@@ -25,6 +25,7 @@ const visuals: Partial<Record<string, SourceVisual>> = {
   },
   pendle: { logos: ["/logos/pendle.png"] },
   uniswap: { logos: ["/logos/uniswap.webp"] },
+  pancakeswap: { logos: ["/logos/pancakeswap.png"] },
   stablecoins: { logos: ["/logos/usdc.png", "/logos/usdt.png"] },
   stakedao: { logos: ["/logos/stakedao.webp"] },
   "cmc-price": { logos: ["/logos/coinmarketcap.png"] },
