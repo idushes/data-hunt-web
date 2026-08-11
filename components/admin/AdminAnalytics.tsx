@@ -31,6 +31,26 @@ type Analytics = {
   sources: SourceUsage[];
 };
 
+type QueueProvider = {
+  provider: string;
+  hosts: string[];
+  requests: number;
+  period_seconds: number;
+  concurrency: number;
+  waiting: number;
+  in_flight: number;
+  utilization_percent: number;
+  next_slot_delay_ms: number;
+  cooldown_ms: number;
+};
+
+type QueueStatus = {
+  enabled: boolean;
+  redis: boolean;
+  max_wait_seconds: number;
+  providers: QueueProvider[];
+};
+
 const periods: Array<[Period, string]> = [
   [1, "Today"],
   [7, "7 days"],
@@ -48,11 +68,26 @@ function shortDate(value: string) {
   return date.format(new Date(`${value}T00:00:00Z`));
 }
 
+function queueState(queue: QueueProvider) {
+  if (queue.cooldown_ms > 0) return ["Cooldown", "text-rose-300 bg-rose-400/10"];
+  if (queue.waiting > 0) return ["Queued", "text-amber-300 bg-amber-400/10"];
+  if (queue.in_flight > 0) return ["Active", "text-emerald-300 bg-emerald-400/10"];
+  return ["Idle", "text-zinc-500 bg-white/[0.04]"];
+}
+
+function milliseconds(value: number) {
+  if (value <= 0) return "—";
+  if (value < 1000) return `${value} ms`;
+  return `${(value / 1000).toFixed(value < 10000 ? 1 : 0)} s`;
+}
+
 export default function AdminAnalytics() {
   const [period, setPeriod] = useState<Period>(7);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [queues, setQueues] = useState<QueueStatus | null>(null);
+  const [queueError, setQueueError] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -94,6 +129,35 @@ export default function AdminAnalytics() {
     void load();
   }, [load]);
 
+  const loadQueues = useCallback(async () => {
+    const token = localStorage.getItem("data_hunt_token");
+    if (!token) {
+      setQueues(null);
+      return;
+    }
+    try {
+      const response = await fetch(`${API_URL}/admin/analytics/queues`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("Live queue data is temporarily unavailable.");
+      setQueues((await response.json()) as QueueStatus);
+      setQueueError("");
+    } catch (caught) {
+      setQueueError(
+        caught instanceof Error
+          ? caught.message
+          : "Live queue data is temporarily unavailable.",
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadQueues();
+    const timer = window.setInterval(() => void loadQueues(), 5000);
+    return () => window.clearInterval(timer);
+  }, [loadQueues]);
+
   const maxDailyRequests = Math.max(
     ...(analytics?.daily.map((item) => item.requests) ?? [0]),
     1,
@@ -107,6 +171,20 @@ export default function AdminAnalytics() {
         ["Success rate", `${analytics.success_rate}%`],
       ]
     : [];
+
+  const sortedQueues = [...(queues?.providers ?? [])].sort(
+    (left, right) =>
+      right.cooldown_ms - left.cooldown_ms ||
+      right.waiting - left.waiting ||
+      right.in_flight - left.in_flight ||
+      left.provider.localeCompare(right.provider),
+  );
+  const totalWaiting = sortedQueues.reduce((sum, queue) => sum + queue.waiting, 0);
+  const totalInFlight = sortedQueues.reduce(
+    (sum, queue) => sum + queue.in_flight,
+    0,
+  );
+  const cooldowns = sortedQueues.filter((queue) => queue.cooldown_ms > 0).length;
 
   return (
     <section className="mx-auto min-h-[75vh] max-w-7xl px-6 pb-24 pt-28">
@@ -261,6 +339,109 @@ export default function AdminAnalytics() {
                 </p>
               )}
             </div>
+          </div>
+
+          <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
+            <div className="flex flex-col gap-4 border-b border-white/10 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold">External API queues</h2>
+                  <span className="rounded-full bg-emerald-400/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-300">
+                    Live · 5s
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-zinc-600">
+                  Combined across all backend instances through Redis
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2 text-xs">
+                <span className="rounded-lg border border-white/10 px-3 py-2 text-zinc-400">
+                  Waiting <strong className="ml-1 text-white">{totalWaiting}</strong>
+                </span>
+                <span className="rounded-lg border border-white/10 px-3 py-2 text-zinc-400">
+                  In flight <strong className="ml-1 text-white">{totalInFlight}</strong>
+                </span>
+                <span className="rounded-lg border border-white/10 px-3 py-2 text-zinc-400">
+                  Cooldowns <strong className="ml-1 text-white">{cooldowns}</strong>
+                </span>
+                <span
+                  className={`rounded-lg border px-3 py-2 ${
+                    queues?.redis
+                      ? "border-emerald-400/20 text-emerald-300"
+                      : "border-amber-400/20 text-amber-300"
+                  }`}
+                >
+                  {queues?.redis ? "Redis connected" : "Local fallback"}
+                </span>
+              </div>
+            </div>
+
+            {queueError ? (
+              <p className="border-b border-amber-400/10 bg-amber-400/[0.05] px-5 py-3 text-xs text-amber-200 sm:px-6">
+                {queueError}
+              </p>
+            ) : null}
+
+            {queues ? (
+              <div className="max-h-[480px] overflow-auto">
+                <table className="w-full min-w-[760px] text-left text-xs">
+                  <thead className="sticky top-0 z-10 bg-[#090909] text-zinc-600">
+                    <tr>
+                      <th className="px-5 py-3 font-medium sm:px-6">Provider</th>
+                      <th className="px-4 py-3 font-medium">State</th>
+                      <th className="px-4 py-3 font-medium">Waiting</th>
+                      <th className="px-4 py-3 font-medium">Concurrency</th>
+                      <th className="px-4 py-3 font-medium">Rate limit</th>
+                      <th className="px-5 py-3 text-right font-medium sm:px-6">
+                        Delay / cooldown
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {sortedQueues.map((queue) => {
+                      const [state, stateClassName] = queueState(queue);
+                      return (
+                        <tr key={queue.provider} className="text-zinc-300">
+                          <td className="px-5 py-3 font-medium text-white sm:px-6">
+                            {queue.provider}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`inline-flex rounded-full px-2 py-1 text-[10px] font-semibold ${stateClassName}`}
+                            >
+                              {state}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 font-medium">{queue.waiting}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <span className="w-8 font-medium text-white">
+                                {queue.in_flight}/{queue.concurrency}
+                              </span>
+                              <div className="h-1.5 w-16 overflow-hidden rounded-full bg-white/[0.06]">
+                                <div
+                                  className="h-full rounded-full bg-gradient-to-r from-violet-500 to-blue-400"
+                                  style={{ width: `${queue.utilization_percent}%` }}
+                                />
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-zinc-500">
+                            {queue.requests}/{queue.period_seconds}s
+                          </td>
+                          <td className="px-5 py-3 text-right text-zinc-500 sm:px-6">
+                            {milliseconds(queue.next_slot_delay_ms)} / {milliseconds(queue.cooldown_ms)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="h-32 animate-pulse bg-white/[0.02]" />
+            )}
           </div>
 
           <p className="mt-5 text-xs text-zinc-700">
