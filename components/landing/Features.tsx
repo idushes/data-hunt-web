@@ -57,6 +57,47 @@ const benefits = [
   { icon: "+", title: "Multi-wallet", note: "EVM + Solana + TRON" },
 ];
 
+function PrivacyVisual() {
+  return (
+    <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
+      <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.07] p-4">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/15 text-lg">
+            ◉
+          </span>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-300">
+              Your browser
+            </p>
+            <p className="mt-1 text-sm text-white">
+              Saved wallets, access tokens, encrypted capsules
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest text-zinc-600 sm:flex-col">
+        <span>Request only</span>
+        <span className="text-lg text-violet-300 sm:rotate-0">→</span>
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-black/50 p-4">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-lg text-zinc-400">
+            ∅
+          </span>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+              DataHunt database
+            </p>
+            <p className="mt-1 text-sm text-white">No service keys or tokens</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Features() {
   const steps = [
     { number: "01", title: "Choose", Visual: ChooseVisual },
@@ -89,7 +130,27 @@ export default function Features() {
 
       <section id="security" className="py-20 sm:py-24">
         <div className="mx-auto max-w-7xl px-6">
-          <h2 className="text-center text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl">Made for everyday use.</h2>
+          <div className="grid gap-8 rounded-3xl border border-white/10 bg-white/[0.025] p-6 sm:p-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
+                Private by design
+              </p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
+                Your keys stay yours.
+              </h2>
+              <p className="mt-3 max-w-lg text-sm leading-6 text-zinc-400">
+                We never persist API keys or service tokens. Anything you save
+                in the helper stays in this browser on your computer.
+              </p>
+              <p className="mt-2 text-xs leading-5 text-zinc-600">
+                Credentials inside a Sheets formula are also visible wherever
+                you share that spreadsheet.
+              </p>
+            </div>
+            <PrivacyVisual />
+          </div>
+
+          <h2 className="mt-20 text-center text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl">Made for everyday use.</h2>
           <div className="mt-10 grid grid-cols-2 gap-3 lg:grid-cols-4">
             {benefits.map((benefit) => (
               <article key={benefit.title} className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 text-center sm:p-7">
