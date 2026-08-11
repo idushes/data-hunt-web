@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 
 import { landingSources } from "./sources";
 import { sheetSources } from "../sheets/catalog";
@@ -10,10 +12,16 @@ describe("landing sources", () => {
     );
   });
 
-  it("gives every source a visual mark", () => {
+  it("gives every source one or more local logo assets", () => {
     for (const source of landingSources) {
-      expect(source.mark).not.toBe("");
-      expect(source.tone).toMatch(/^from-/);
+      expect(source.logos.length).toBeGreaterThan(0);
+
+      for (const logo of source.logos) {
+        expect(logo).toMatch(/^\//);
+        expect(existsSync(resolve(process.cwd(), "public", logo.slice(1)))).toBe(
+          true
+        );
+      }
     }
   });
 });

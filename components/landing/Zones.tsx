@@ -2,6 +2,7 @@ import {
   landingSourceGroups,
   landingSources,
 } from "@/components/landing/sources";
+import Image from "next/image";
 
 export default function Zones() {
   return (
@@ -22,8 +23,23 @@ export default function Zones() {
               key={source.id}
               className="group flex min-h-36 flex-col justify-between rounded-2xl border border-white/10 bg-white/[0.025] p-4 transition hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.05]"
             >
-              <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${source.tone} text-sm font-black text-black shadow-lg shadow-black/30`}>
-                {source.mark}
+              <div className="relative h-12 w-12 drop-shadow-lg">
+                {source.logos.map((logo, index) => (
+                  <Image
+                    key={logo}
+                    src={logo}
+                    alt={`${source.name} logo`}
+                    width={48}
+                    height={48}
+                    className={
+                      source.logos.length === 1
+                        ? "h-12 w-12 rounded-2xl object-cover ring-1 ring-white/10"
+                        : `absolute h-9 w-9 rounded-full object-cover ring-2 ring-black ${
+                            index === 0 ? "left-0 top-0" : "bottom-0 right-0"
+                          }`
+                    }
+                  />
+                ))}
               </div>
               <div className="mt-6">
                 <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-600">
