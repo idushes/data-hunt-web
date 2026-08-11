@@ -240,14 +240,14 @@ export const sheetSources: SheetSource[] = [
     name: "Polymarket positions",
     group: "Prediction markets",
     description:
-      "Portfolio value and current prediction-market positions with outcomes, prices, P&L, and redeemable status.",
+      "pUSD cash balance, total account value, and prediction-market positions with prices, P&L, and redeemable status.",
     path: "/polymarket/positions.csv",
     keyColumn: "position_id",
     parameters: [
       {
         ...evmAddress,
-        label: "Polymarket profile wallet",
-        help: "Use the profile/proxy wallet address shown in your Polymarket profile.",
+        label: "Polymarket funder wallet",
+        help: "Use the proxy/Safe wallet from your profile or the deposit wallet that holds your pUSD.",
       },
       {
         key: "size_threshold",

@@ -43,6 +43,11 @@ const visuals: Partial<Record<string, SourceVisual>> = {
 };
 
 const groups: Partial<Record<string, LandingGroup>> = {
+  polymarket: {
+    name: "Polymarket",
+    detail: "Markets · P&L · pUSD cash",
+    members: [],
+  },
   uniswap: {
     name: "Uniswap",
     detail: "V3 · V4",

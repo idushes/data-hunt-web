@@ -47,5 +47,6 @@ describe("landing sources", () => {
 
     expect(polymarket?.logos).toEqual(["/logos/polymarket.png"]);
     expect(polymarket?.logoClassName).toContain("bg-white");
+    expect(polymarket?.detail).toBe("Markets · P&L · pUSD cash");
   });
 });
