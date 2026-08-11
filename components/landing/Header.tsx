@@ -3,23 +3,33 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import AuthModal from '@/components/auth/AuthModal';
+import { hasAdminAccess } from './adminAccess';
 
 export default function Header() {
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
 
     useEffect(() => {
-        // Check auth status on mount and when modal closes
-        const checkAuth = () => {
+        let active = true;
+        const checkAuth = async () => {
             const token = localStorage.getItem('data_hunt_token');
             setIsAuthenticated(!!token);
+            setIsAdmin(false);
+            if (token) {
+                const allowed = await hasAdminAccess(token);
+                if (active) setIsAdmin(allowed);
+            }
         };
 
-        checkAuth();
+        void checkAuth();
 
-        // Listen for storage events (logout in other tabs)
-        window.addEventListener('storage', checkAuth);
-        return () => window.removeEventListener('storage', checkAuth);
+        const handleStorage = () => void checkAuth();
+        window.addEventListener('storage', handleStorage);
+        return () => {
+            active = false;
+            window.removeEventListener('storage', handleStorage);
+        };
     }, [isAuthModalOpen]); // Re-check when modal state changes
 
     return (
@@ -41,13 +51,15 @@ export default function Header() {
                     </nav>
 
                     <div className="flex items-center gap-3 sm:gap-4">
-                        <Link
-                            href="/requests"
-                            aria-label="Open feature requests"
-                            className="rounded-lg border border-violet-400/20 bg-violet-500/10 px-3 py-2 text-sm font-medium text-violet-200 transition hover:bg-violet-500/20 md:hidden"
-                        >
-                            Ideas
-                        </Link>
+                        {!isAdmin ? (
+                            <Link
+                                href="/requests"
+                                aria-label="Open feature requests"
+                                className="rounded-lg border border-violet-400/20 bg-violet-500/10 px-3 py-2 text-sm font-medium text-violet-200 transition hover:bg-violet-500/20 md:hidden"
+                            >
+                                Ideas
+                            </Link>
+                        ) : null}
                         <Link
                             href="/sheets"
                             aria-label="Open Google Sheets helper"
@@ -56,6 +68,15 @@ export default function Header() {
                             <span className="sm:hidden">Sheets</span>
                             <span className="hidden sm:inline">Open Sheets helper</span>
                         </Link>
+                        {isAdmin ? (
+                            <Link
+                                href="/admin/analytics"
+                                aria-label="Open admin analytics"
+                                className="rounded-lg border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-300/20 sm:px-4"
+                            >
+                                Admin
+                            </Link>
+                        ) : null}
                         {isAuthenticated ? (
                             <Link
                                 href="/account"
