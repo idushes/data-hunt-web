@@ -191,6 +191,7 @@ export function buildValueResourceDescriptor({
   const credentials: Record<string, string> = {};
   const originalUrl = new URL(sourceUrl);
   originalUrl.searchParams.forEach((value, name) => {
+    if (name === "auth_token") return;
     if (credentialNames.has(name)) {
       credentials[name] = value;
     } else {

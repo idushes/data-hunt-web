@@ -72,6 +72,13 @@ function jwtPayload(token: string): Record<string, unknown> | null {
   }
 }
 
+function activeLoginToken() {
+  const token = localStorage.getItem("data_hunt_token") ?? "";
+  const payload = jwtPayload(token);
+  const expiresAt = typeof payload?.exp === "number" ? payload.exp : 0;
+  return token && expiresAt > Date.now() / 1000 ? token : "";
+}
+
 function storedSheetsAccess(): StoredSheetsAccess | null {
   try {
     const content = localStorage.getItem(SHEETS_ACCESS_STORAGE_KEY);
@@ -858,6 +865,25 @@ export default function SheetsBuilder() {
   const [editingCoinbaseIntxKey, setEditingCoinbaseIntxKey] = useState(false);
   const [generatingCoinbaseIntxKey, setGeneratingCoinbaseIntxKey] =
     useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    function refreshAuthentication() {
+      setIsAuthenticated(Boolean(activeLoginToken()));
+    }
+
+    function handleAuthStorage(event: StorageEvent) {
+      if (event.key === "data_hunt_token") refreshAuthentication();
+    }
+
+    refreshAuthentication();
+    window.addEventListener(AUTH_CHANGED_EVENT, refreshAuthentication);
+    window.addEventListener("storage", handleAuthStorage);
+    return () => {
+      window.removeEventListener(AUTH_CHANGED_EVENT, refreshAuthentication);
+      window.removeEventListener("storage", handleAuthStorage);
+    };
+  }, []);
 
   useEffect(() => {
     function resetShortLinks() {
@@ -977,16 +1003,14 @@ export default function SheetsBuilder() {
     const descriptor = valueResourceDescriptorForCell(rowIndex, columnIndex);
     if (!descriptor) return "";
 
-    const loginToken = localStorage.getItem("data_hunt_token") ?? "";
-    const loginPayload = jwtPayload(loginToken);
-    const expiresAt =
-      typeof loginPayload?.exp === "number" ? loginPayload.exp : 0;
+    const loginToken = activeLoginToken();
+    if (!loginToken) {
+      throw new Error("Sign in before creating a Google Sheets formula.");
+    }
     const resourceHeaders: Record<string, string> = {
       "Content-Type": "application/json",
+      Authorization: `Bearer ${loginToken}`,
     };
-    if (loginToken && expiresAt > Date.now() / 1000) {
-      resourceHeaders.Authorization = `Bearer ${loginToken}`;
-    }
 
     const resourceRequest = fetch(`${API_BASE_URL}/value-resources`, {
       method: "POST",
@@ -994,9 +1018,7 @@ export default function SheetsBuilder() {
       body: JSON.stringify(descriptor.request),
       cache: "no-store",
     });
-    const tokenRequest = loginToken
-      ? sheetsAccessToken(loginToken)
-      : Promise.resolve("");
+    const tokenRequest = sheetsAccessToken(loginToken);
     const [response, userToken] = await Promise.all([
       resourceRequest,
       tokenRequest,
@@ -1127,12 +1149,13 @@ export default function SheetsBuilder() {
     return "";
   }
 
-  function buildUrl() {
+  function buildUrl(authToken: string) {
     const url = new URL(source.path, API_BASE_URL);
     for (const parameter of source.parameters) {
       const value = values[parameter.key]?.trim() ?? "";
       if (value !== "") url.searchParams.set(parameter.key, value);
     }
+    url.searchParams.set("auth_token", authToken);
     return url.toString();
   }
 
@@ -1143,7 +1166,6 @@ export default function SheetsBuilder() {
       return;
     }
 
-    const url = buildUrl();
     setLoading(true);
     setError("");
     setRows([]);
@@ -1152,7 +1174,19 @@ export default function SheetsBuilder() {
     setCopied(null);
 
     try {
-      const response = await fetch(url, { cache: "no-store" });
+      const loginToken = activeLoginToken();
+      if (!loginToken) {
+        throw new Error("Sign in before loading data.");
+      }
+      let userToken = await sheetsAccessToken(loginToken);
+      let url = buildUrl(userToken);
+      let response = await fetch(url, { cache: "no-store" });
+      if (response.status === 401) {
+        localStorage.removeItem(SHEETS_ACCESS_STORAGE_KEY);
+        userToken = await sheetsAccessToken(loginToken);
+        url = buildUrl(userToken);
+        response = await fetch(url, { cache: "no-store" });
+      }
       const content = await response.text();
       if (!response.ok) throw new Error(errorMessage(content));
 
@@ -1201,9 +1235,16 @@ export default function SheetsBuilder() {
     setGenerating(true);
     setError("");
     try {
+      const loginToken = activeLoginToken();
+      if (!loginToken) {
+        throw new Error("Sign in before encrypting a Coinbase access key.");
+      }
       const response = await fetch(`${API_BASE_URL}/coinbase/capsule`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${loginToken}`,
+        },
         body: JSON.stringify({ key_name: keyName, key_secret: keySecret }),
         cache: "no-store",
       });
@@ -1291,6 +1332,12 @@ export default function SheetsBuilder() {
         </div>
 
         <div className="space-y-4">
+          {!isAuthenticated ? (
+            <div className="rounded-xl border border-amber-300/20 bg-amber-300/[0.08] px-4 py-3 text-sm text-amber-100">
+              Sign in with your wallet to load data and create protected Google
+              Sheets formulas.
+            </div>
+          ) : null}
           <section className="rounded-xl border border-white/10 bg-white/[0.035] p-4 shadow-2xl shadow-black/30">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="font-medium text-white">1. Data source</h2>
@@ -1418,7 +1465,7 @@ export default function SheetsBuilder() {
                 <button
                   type="button"
                   onClick={loadTable}
-                  disabled={loading}
+                  disabled={loading || !isAuthenticated}
                   className="flex min-w-40 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-violet-500 to-blue-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-violet-950/30 transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
                 >
                   {loading ? (
@@ -1622,8 +1669,8 @@ export default function SheetsBuilder() {
 
                 <p className="mt-3 text-xs leading-4 text-zinc-500">
                   {supportsShortResource
-                    ? "Signed-in formulas include a revocable, read-only Sheets token and receive a higher request limit. Anonymous formulas remain available with a smaller limit."
-                    : "This cell cannot use a stable resource ID, so the compatible legacy URL is used."}
+                    ? "Every formula includes a revocable, read-only Sheets token. Anonymous data access is disabled."
+                    : "This cell uses an authenticated legacy URL because it cannot use a stable resource ID."}
                 </p>
               </section>
             ) : null}

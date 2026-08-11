@@ -51,7 +51,7 @@ function PasteVisual() {
 }
 
 const benefits = [
-  { icon: "⌁", title: "Stable cells", note: "Row order safe" },
+  { icon: "✓", title: "Signed access", note: "Login required" },
   { icon: "60", title: "60s cache", note: "Fewer requests" },
   { icon: "🔒", title: "Private Coinbase", note: "Separate Main + Perps keys" },
   { icon: "+", title: "Multi-wallet", note: "EVM + Solana + TRON" },
