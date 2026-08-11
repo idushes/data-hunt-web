@@ -259,6 +259,25 @@ export const sheetSources: SheetSource[] = [
     ],
   },
   {
+    id: "pendle",
+    name: "Pendle positions",
+    group: "DeFi",
+    description:
+      "PT, YT, LP, cross-chain PT, and SY positions across every Pendle network, with USD values and claimable rewards.",
+    path: "/pendle/positions.csv",
+    keyColumn: "position_id",
+    parameters: [
+      evmAddress,
+      {
+        key: "include_closed",
+        label: "Include closed markets",
+        kind: "boolean",
+        defaultValue: "false",
+        help: "Claimable rewards are reported by Pendle and may be cached there for up to 24 hours.",
+      },
+    ],
+  },
+  {
     id: "uniswap",
     name: "Uniswap V3 positions",
     group: "DeFi",

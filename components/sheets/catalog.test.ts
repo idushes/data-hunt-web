@@ -12,6 +12,7 @@ const publishedSources = {
   lido: ["/lido/positions.csv", "position_id"],
   gmx: ["/gmx/positions.csv", "position_id"],
   polymarket: ["/polymarket/positions.csv", "position_id"],
+  pendle: ["/pendle/positions.csv", "position_id"],
   uniswap: ["/uniswap/positions.csv", "position_id"],
   stablecoins: ["/stablecoins/balances.csv", "balance_id"],
   stakedao: ["/stakedao/positions.csv", "position_id"],

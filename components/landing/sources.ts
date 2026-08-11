@@ -23,6 +23,7 @@ const visuals: Partial<Record<string, SourceVisual>> = {
     logos: ["/logos/polymarket.png"],
     logoClassName: "bg-white p-2 object-contain",
   },
+  pendle: { logos: ["/logos/pendle.png"] },
   uniswap: { logos: ["/logos/uniswap.webp"] },
   stablecoins: { logos: ["/logos/usdc.png", "/logos/usdt.png"] },
   stakedao: { logos: ["/logos/stakedao.webp"] },
