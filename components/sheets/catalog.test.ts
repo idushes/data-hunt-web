@@ -14,6 +14,7 @@ const publishedSources = {
   polymarket: ["/polymarket/positions.csv", "position_id"],
   pendle: ["/pendle/positions.csv", "position_id"],
   uniswap: ["/uniswap/positions.csv", "position_id"],
+  "uniswap-v4": ["/uniswap/v4/positions.csv", "position_id"],
   stablecoins: ["/stablecoins/balances.csv", "balance_id"],
   stakedao: ["/stakedao/positions.csv", "position_id"],
   "cmc-price": ["/cmc/price.csv", null],

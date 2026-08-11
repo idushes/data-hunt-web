@@ -306,6 +306,35 @@ export const sheetSources: SheetSource[] = [
     ],
   },
   {
+    id: "uniswap-v4",
+    name: "Uniswap V4 positions",
+    group: "DeFi",
+    description:
+      "Uniswap V4 NFT positions: current amounts, price range, in-range status, USD value, hooks, and claimable fees.",
+    path: "/uniswap/v4/positions.csv",
+    keyColumn: "position_id",
+    parameters: [
+      evmAddress,
+      {
+        key: "chain_id",
+        label: "Network",
+        kind: "select",
+        defaultValue: "1",
+        options: [
+          { label: "Ethereum", value: "1" },
+          { label: "Arbitrum", value: "42161" },
+          { label: "Base", value: "8453" },
+        ],
+      },
+      {
+        key: "include_closed",
+        label: "Include closed positions",
+        kind: "boolean",
+        defaultValue: "false",
+      },
+    ],
+  },
+  {
     id: "stablecoins",
     name: "Stablecoin balances",
     group: "Wallets",

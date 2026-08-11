@@ -38,6 +38,11 @@ const visuals: Partial<Record<string, SourceVisual>> = {
 };
 
 const groups: Partial<Record<string, LandingGroup>> = {
+  uniswap: {
+    name: "Uniswap",
+    detail: "V3 · V4",
+    members: ["uniswap-v4"],
+  },
   "gmtrade-assets": {
     name: "GMTrade",
     detail: "Assets · Perpetuals",

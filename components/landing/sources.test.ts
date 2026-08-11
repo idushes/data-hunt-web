@@ -14,10 +14,13 @@ describe("landing sources", () => {
     expect(new Set(representedIds).size).toBe(representedIds.length);
   });
 
-  it("combines project tables into compact Kamino and GMTrade cards", () => {
+  it("combines project tables into compact protocol cards", () => {
+    const uniswap = landingSources.find((source) => source.name === "Uniswap");
     const kamino = landingSources.find((source) => source.name === "Kamino");
     const gmtrade = landingSources.find((source) => source.name === "GMTrade");
 
+    expect(uniswap?.sourceIds).toEqual(["uniswap", "uniswap-v4"]);
+    expect(uniswap?.detail).toBe("V3 · V4");
     expect(kamino?.sourceIds).toEqual(["kamino-vaults", "kamino-positions"]);
     expect(kamino?.detail).toBe("kVaults · Positions");
     expect(gmtrade?.sourceIds).toEqual(["gmtrade-assets", "gmtrade-perps"]);
