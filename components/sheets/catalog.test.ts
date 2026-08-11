@@ -23,6 +23,7 @@ const publishedSources = {
   lighter: ["/lighter/balance", "account_index"],
   paradex: ["/paradex/balance", "account"],
   coinbase: ["/coinbase/balance", "id"],
+  bybit: ["/bybit/account.csv", "id"],
   "gmtrade-assets": ["/solana/gmtrade.csv", "mint"],
   "jupiter-jlp": ["/jupiter/jlp.csv", "position_id"],
   "gmtrade-perps": ["/solana/gmtrade-perps.csv", "position_address"],
@@ -98,6 +99,20 @@ describe("Sheets source catalog contract", () => {
     expect(
       coinbase?.parameters.some((parameter) =>
         ["token", "key_name", "key_secret"].includes(parameter.key)
+      )
+    ).toBe(false);
+  });
+
+  it("requires an encrypted browser-held access key for Bybit", () => {
+    const bybit = sheetSources.find((source) => source.id === "bybit");
+    const capsule = bybit?.parameters.find(
+      (parameter) => parameter.key === "capsule"
+    );
+
+    expect(capsule).toMatchObject({ kind: "secret", required: true });
+    expect(
+      bybit?.parameters.some((parameter) =>
+        ["api_key", "api_secret"].includes(parameter.key)
       )
     ).toBe(false);
   });

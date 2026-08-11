@@ -678,6 +678,46 @@ export const sheetSources: SheetSource[] = [
       },
     ],
   },
+  {
+    id: "bybit",
+    name: "Bybit account",
+    group: "Exchanges",
+    description:
+      "Unified Account totals, non-zero balances, and open linear/inverse positions from a read-only key.",
+    path: "/bybit/account.csv",
+    keyColumn: "id",
+    parameters: [
+      {
+        key: "capsule",
+        label: "Encrypted Bybit access key",
+        kind: "secret",
+        required: true,
+      },
+      {
+        key: "region",
+        label: "API region",
+        kind: "select",
+        defaultValue: "global",
+        options: [
+          { label: "Global", value: "global" },
+          { label: "Indonesia", value: "indonesia" },
+          { label: "European Union", value: "eu" },
+          { label: "Netherlands", value: "netherlands" },
+          { label: "Turkey", value: "turkey" },
+          { label: "Kazakhstan", value: "kazakhstan" },
+          { label: "Georgia", value: "georgia" },
+          { label: "United Arab Emirates", value: "uae" },
+          { label: "Japan", value: "japan" },
+        ],
+      },
+      {
+        key: "include_positions",
+        label: "Include open derivative positions",
+        kind: "boolean",
+        defaultValue: "true",
+      },
+    ],
+  },
 ];
 
 export function initialParameterValues(source: SheetSource) {

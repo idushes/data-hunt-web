@@ -33,6 +33,10 @@ const visuals: Partial<Record<string, SourceVisual>> = {
   lighter: { logos: ["/logos/lighter.webp"] },
   paradex: { logos: ["/logos/paradex.webp"] },
   coinbase: { logos: ["/logos/coinbase.webp"] },
+  bybit: {
+    logos: ["/logos/bybit.png"],
+    logoClassName: "bg-white p-2 object-contain",
+  },
   "gmtrade-assets": { logos: ["/logos/gmtrade.webp"] },
   "jupiter-jlp": { logos: ["/logos/jupiter.webp"] },
   "kamino-vaults": { logos: ["/logos/kamino.webp"] },
