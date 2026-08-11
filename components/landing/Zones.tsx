@@ -55,6 +55,11 @@ export default function Zones() {
                 <p className="mt-1 text-sm font-medium leading-5 text-zinc-200">
                   {source.name}
                 </p>
+                {source.detail && (
+                  <p className="mt-1.5 text-[9px] uppercase tracking-[0.12em] text-zinc-500">
+                    {source.detail}
+                  </p>
+                )}
                 {source.id === "stablecoins" && (
                   <p className="mt-1.5 text-[9px] uppercase tracking-[0.12em] text-zinc-500">
                     ETH · SOL · ARB · BASE · TRON

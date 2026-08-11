@@ -4,6 +4,12 @@ type SourceVisual = {
   logos: readonly string[];
 };
 
+type LandingGroup = {
+  name: string;
+  detail: string;
+  members: readonly string[];
+};
+
 const visuals: Partial<Record<string, SourceVisual>> = {
   fluid: { logos: ["/logos/fluid.webp"] },
   aave: { logos: ["/logos/aave.webp"] },
@@ -22,21 +28,43 @@ const visuals: Partial<Record<string, SourceVisual>> = {
   coinbase: { logos: ["/logos/coinbase.webp"] },
   "gmtrade-assets": { logos: ["/logos/gmtrade.webp"] },
   "jupiter-jlp": { logos: ["/logos/jupiter.webp"] },
-  "gmtrade-perps": { logos: ["/logos/gmtrade.webp"] },
   "kamino-vaults": { logos: ["/logos/kamino.webp"] },
-  "kamino-positions": { logos: ["/logos/kamino.webp"] },
 };
+
+const groups: Partial<Record<string, LandingGroup>> = {
+  "gmtrade-assets": {
+    name: "GMTrade",
+    detail: "Assets · Perpetuals",
+    members: ["gmtrade-perps"],
+  },
+  "kamino-vaults": {
+    name: "Kamino",
+    detail: "kVaults · Positions",
+    members: ["kamino-positions"],
+  },
+};
+
+const groupedMemberIds = new Set(
+  Object.values(groups).flatMap((group) => group?.members ?? []),
+);
 
 const fallbackVisual: SourceVisual = {
   logos: ["/favicon_io/datahunt-mark.svg"],
 };
 
-export const landingSources = sheetSources.map((source) => ({
-  id: source.id,
-  name: source.name,
-  group: source.group,
-  ...(visuals[source.id] ?? fallbackVisual),
-}));
+export const landingSources = sheetSources
+  .filter((source) => !groupedMemberIds.has(source.id))
+  .map((source) => {
+    const combined = groups[source.id];
+    return {
+      id: source.id,
+      name: combined?.name ?? source.name,
+      group: source.group,
+      detail: combined?.detail,
+      sourceIds: [source.id, ...(combined?.members ?? [])],
+      ...(visuals[source.id] ?? fallbackVisual),
+    };
+  });
 
 export const landingSourceGroups = Array.from(
   new Set(sheetSources.map((source) => source.group))
