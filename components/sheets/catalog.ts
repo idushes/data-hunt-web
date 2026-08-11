@@ -265,10 +265,10 @@ export const sheetSources: SheetSource[] = [
   },
   {
     id: "stablecoins",
-    name: "USDC / USDT balances",
+    name: "Stablecoin balances",
     group: "Wallets",
     description:
-      "Direct USDC and USDT balances for Ethereum and Solana wallets, including zero balances.",
+      "USDC, USDT, and up to 15 popular USD stablecoins for EVM, Solana, and TRON wallets.",
     path: "/stablecoins/balances.csv",
     keyColumn: "balance_id",
     requiredAny: ["address", "wallet", "tron_address"],
