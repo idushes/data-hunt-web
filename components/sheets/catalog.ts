@@ -236,6 +236,29 @@ export const sheetSources: SheetSource[] = [
     ],
   },
   {
+    id: "polymarket",
+    name: "Polymarket positions",
+    group: "Prediction markets",
+    description:
+      "Portfolio value and current prediction-market positions with outcomes, prices, P&L, and redeemable status.",
+    path: "/polymarket/positions.csv",
+    keyColumn: "position_id",
+    parameters: [
+      {
+        ...evmAddress,
+        label: "Polymarket profile wallet",
+        help: "Use the profile/proxy wallet address shown in your Polymarket profile.",
+      },
+      {
+        key: "size_threshold",
+        label: "Minimum position size",
+        kind: "number",
+        defaultValue: "1",
+        help: "Set to 0 to include dust positions.",
+      },
+    ],
+  },
+  {
     id: "uniswap",
     name: "Uniswap V3 positions",
     group: "DeFi",

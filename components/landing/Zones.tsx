@@ -34,7 +34,7 @@ export default function Zones() {
                       height={48}
                       className={
                         source.logos.length === 1
-                          ? "h-12 w-12 rounded-2xl object-cover ring-1 ring-white/10"
+                          ? `h-12 w-12 rounded-2xl object-cover ring-1 ring-white/10 ${source.logoClassName ?? ""}`
                           : `absolute h-9 w-9 rounded-full object-cover ring-2 ring-black ${
                               index === 0 ? "left-0 top-0" : "bottom-0 right-0"
                             }`

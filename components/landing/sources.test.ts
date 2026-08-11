@@ -36,4 +36,13 @@ describe("landing sources", () => {
       }
     }
   });
+
+  it("uses the official Polymarket mark on a readable background", () => {
+    const polymarket = landingSources.find(
+      (source) => source.id === "polymarket",
+    );
+
+    expect(polymarket?.logos).toEqual(["/logos/polymarket.png"]);
+    expect(polymarket?.logoClassName).toContain("bg-white");
+  });
 });

@@ -2,6 +2,7 @@ import { sheetSources } from "../sheets/catalog";
 
 type SourceVisual = {
   logos: readonly string[];
+  logoClassName?: string;
 };
 
 type LandingGroup = {
@@ -18,6 +19,10 @@ const visuals: Partial<Record<string, SourceVisual>> = {
   euler: { logos: ["/logos/euler.webp"] },
   lido: { logos: ["/logos/lido.webp"] },
   gmx: { logos: ["/logos/gmx.webp"] },
+  polymarket: {
+    logos: ["/logos/polymarket.png"],
+    logoClassName: "bg-white p-2 object-contain",
+  },
   uniswap: { logos: ["/logos/uniswap.webp"] },
   stablecoins: { logos: ["/logos/usdc.png", "/logos/usdt.png"] },
   stakedao: { logos: ["/logos/stakedao.webp"] },
