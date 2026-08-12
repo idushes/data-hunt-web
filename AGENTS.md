@@ -34,7 +34,11 @@ Guidance for coding agents working in this repository.
 - Keep the default Vercel Next.js build flow unless the user explicitly approves platform-specific configuration changes.
 - Validate production readiness with `npm run build` before deploying or before pushing changes expected to deploy.
 - Configure `NEXT_PUBLIC_API_URL=https://hunt.data.lisacorp.com` in the Vercel project environment variables so browser-side requests target the deployed backend API instead of the local fallback.
-- For manual Vercel CLI deploys, use `vercel deploy` for preview and `vercel deploy --prod` for production from this repository root after confirming the linked Vercel project.
+- Deployment is meant to be automatic: pushing to `main` triggers a production build through Vercel's GitHub integration. There is no CI workflow in the repo.
+- Always verify that the push actually produced a build instead of assuming it did. The Vercel CLI is not installed on the usual dev machine, so list the project's deployments through the Vercel MCP tools (project `data-hunt-web`, team `lisateam`) and match `meta.githubCommitSha` against the commit you pushed. A build normally appears within a couple of minutes.
+- The integration has been observed to silently not fire — a push sat for 25+ minutes with no build and no error anywhere. If the commit never shows up, say so rather than reporting the change as shipped, and ask before touching Vercel project settings or triggering a manual deploy.
+- For a manual deploy when the integration is genuinely unavailable, use `vercel deploy` for preview and `vercel deploy --prod` for production from this repository root after confirming the linked Vercel project.
+- Backend columns and API fields are NOT deployed from this repo. The Sheets table renders whatever columns the backend CSV returns, so a new column ships by deploying the backend — see the Deployment section in the sibling backend repo's `AGENTS.md`.
 - Do not add or change Vercel project settings, domains, deployment protection, environment variable names, or CI automation without explicit user confirmation.
 
 ## Coding Rules
