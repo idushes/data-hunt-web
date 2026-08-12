@@ -20,6 +20,15 @@ type SourceUsage = {
   errors: number;
 };
 
+type ErrorSource = {
+  source: string;
+  requests: number;
+  errors: number;
+  client_errors: number;
+  server_errors: number;
+  error_rate: number;
+};
+
 type Analytics = {
   period_days: Period;
   registered_users: number;
@@ -29,6 +38,7 @@ type Analytics = {
   success_rate: number;
   daily: DailyUsage[];
   sources: SourceUsage[];
+  error_sources?: ErrorSource[];
 };
 
 type QueueProvider = {
@@ -339,6 +349,77 @@ export default function AdminAnalytics() {
                 </p>
               )}
             </div>
+          </div>
+
+          <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
+            <div className="flex flex-col gap-2 border-b border-white/10 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold">Source errors</h2>
+                  {analytics.errors > 0 ? (
+                    <span className="rounded-full bg-rose-400/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-rose-300">
+                      {number.format(analytics.errors)} errors
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-emerald-400/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-300">
+                      Healthy
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 text-xs text-zinc-600">
+                  Sources with failed requests during the selected period
+                </p>
+              </div>
+            </div>
+
+            {(analytics.error_sources ?? []).length ? (
+              <div className="overflow-auto">
+                <table className="w-full min-w-[680px] text-left text-xs">
+                  <thead className="bg-[#090909] text-zinc-600">
+                    <tr>
+                      <th className="px-5 py-3 font-medium sm:px-6">Source</th>
+                      <th className="px-4 py-3 font-medium">Errors</th>
+                      <th className="px-4 py-3 font-medium">Server</th>
+                      <th className="px-4 py-3 font-medium">Client</th>
+                      <th className="px-4 py-3 font-medium">Requests</th>
+                      <th className="px-5 py-3 text-right font-medium sm:px-6">
+                        Error rate
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {(analytics.error_sources ?? []).map((source) => (
+                      <tr key={source.source} className="text-zinc-300">
+                        <td className="px-5 py-3 font-medium text-white sm:px-6">
+                          {source.source}
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-rose-300">
+                          {number.format(source.errors)}
+                        </td>
+                        <td className="px-4 py-3 text-rose-300">
+                          {number.format(source.server_errors)}
+                        </td>
+                        <td className="px-4 py-3 text-amber-300">
+                          {number.format(source.client_errors)}
+                        </td>
+                        <td className="px-4 py-3 text-zinc-500">
+                          {number.format(source.requests)}
+                        </td>
+                        <td className="px-5 py-3 text-right sm:px-6">
+                          <span className="inline-flex rounded-full bg-rose-400/10 px-2 py-1 font-semibold text-rose-300">
+                            {source.error_rate}%
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="p-6 text-sm text-zinc-500">
+                No source errors recorded in this period.
+              </p>
+            )}
           </div>
 
           <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
