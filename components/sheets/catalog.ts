@@ -55,7 +55,8 @@ export const sheetSources: SheetSource[] = [
     id: "fluid",
     name: "Fluid positions",
     group: "DeFi",
-    description: "Deposits, loans, vaults, and Fluid Lite positions for an EVM wallet.",
+    description:
+      "Deposits, loans, net APR, and Fluid Lite positions for an EVM wallet.",
     path: "/fluid/positions.csv",
     keyColumn: "position_id",
     parameters: [
