@@ -1637,7 +1637,7 @@ export default function SheetsBuilder() {
                   <div className="min-w-0 sm:col-span-2 xl:col-span-3">
                     <CredentialKeyCard
                       title="Binance account"
-                      description="Non-zero Spot balances and available USD-M Futures data. Raw credentials are discarded after validation."
+                      description="Total value across active Binance wallets, plus Spot, Funding, and available USD-M Futures data. Raw credentials are discarded after validation."
                       capsule={values.capsule ?? ""}
                       keyName={binanceApiKey}
                       keySecret={binanceApiSecret}

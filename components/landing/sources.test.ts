@@ -25,6 +25,10 @@ describe("landing sources", () => {
     expect(kamino?.detail).toBe("kVaults · Positions");
     expect(gmtrade?.sourceIds).toEqual(["gmtrade-assets", "gmtrade-perps"]);
     expect(gmtrade?.detail).toBe("Assets · Perpetuals");
+
+    const binance = landingSources.find((source) => source.id === "binance");
+    expect(binance?.name).toBe("Binance");
+    expect(binance?.detail).toBe("All wallets · Funding · Futures");
   });
 
   it("gives every source one or more local logo assets", () => {

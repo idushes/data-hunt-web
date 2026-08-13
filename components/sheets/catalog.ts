@@ -724,7 +724,7 @@ export const sheetSources: SheetSource[] = [
     name: "Binance account",
     group: "Exchanges",
     description:
-      "Non-zero Spot balances with USD values and available USD-M Futures balances and positions from a read-only key.",
+      "Total value across active Binance wallets, plus non-zero Spot and Funding balances and available USD-M Futures data from a read-only key.",
     path: "/binance/account.csv",
     keyColumn: "id",
     parameters: [

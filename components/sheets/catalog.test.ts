@@ -125,6 +125,8 @@ describe("Sheets source catalog contract", () => {
     );
 
     expect(capsule).toMatchObject({ kind: "secret", required: true });
+    expect(binance?.description).toContain("active Binance wallets");
+    expect(binance?.description).toContain("Funding");
     expect(
       binance?.parameters.some((parameter) =>
         ["api_key", "api_secret"].includes(parameter.key)
