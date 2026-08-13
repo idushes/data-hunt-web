@@ -29,6 +29,10 @@ describe("landing sources", () => {
     const binance = landingSources.find((source) => source.id === "binance");
     expect(binance?.name).toBe("Binance");
     expect(binance?.detail).toBe("All wallets · Funding · Futures");
+
+    const bybit = landingSources.find((source) => source.id === "bybit");
+    expect(bybit?.name).toBe("Bybit");
+    expect(bybit?.detail).toBe("Unified · Funding · Positions");
   });
 
   it("gives every source one or more local logo assets", () => {

@@ -44,6 +44,11 @@ const visuals: Partial<Record<string, SourceVisual>> = {
 };
 
 const groups: Partial<Record<string, LandingGroup>> = {
+  bybit: {
+    name: "Bybit",
+    detail: "Unified · Funding · Positions",
+    members: [],
+  },
   binance: {
     name: "Binance",
     detail: "All wallets · Funding · Futures",

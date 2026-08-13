@@ -111,6 +111,7 @@ describe("Sheets source catalog contract", () => {
     );
 
     expect(capsule).toMatchObject({ kind: "secret", required: true });
+    expect(bybit?.description).toContain("Unified and Funding wallets");
     expect(
       bybit?.parameters.some((parameter) =>
         ["api_key", "api_secret"].includes(parameter.key)

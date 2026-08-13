@@ -684,7 +684,7 @@ export const sheetSources: SheetSource[] = [
     name: "Bybit account",
     group: "Exchanges",
     description:
-      "Unified Account totals, non-zero balances, and open linear/inverse positions from a read-only key.",
+      "Total value across Unified and Funding wallets, their non-zero balances, and open linear/inverse positions from a read-only key.",
     path: "/bybit/account.csv",
     keyColumn: "id",
     parameters: [
