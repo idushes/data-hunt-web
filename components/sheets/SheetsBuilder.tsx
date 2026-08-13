@@ -286,7 +286,7 @@ function shortAddress(value: string) {
 }
 
 function parameterInputClass() {
-  return "mt-1.5 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-violet-400/60 focus:ring-2 focus:ring-violet-400/10";
+  return "mt-1 w-full rounded-lg border border-white/10 bg-black/50 px-3 py-1.5 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-violet-400/60 focus:ring-2 focus:ring-violet-400/10";
 }
 
 function errorMessage(content: string) {
@@ -311,7 +311,7 @@ function ParameterField({
 }) {
   if (parameter.kind === "boolean") {
     return (
-      <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-white/10 bg-black/30 px-3 py-2.5">
+      <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-white/10 bg-black/30 px-3 py-2">
         <input
           type="checkbox"
           checked={value === "true"}
@@ -515,7 +515,7 @@ function AddressField({
           </span>
         ) : null}
       </label>
-      <div className="mt-1.5 flex min-w-0 gap-1.5">
+      <div className="mt-1 flex min-w-0 gap-1.5">
         <div className="flex min-w-0 flex-1 overflow-visible rounded-lg border border-white/10 bg-black/50 transition focus-within:border-violet-400/60 focus-within:ring-2 focus-within:ring-violet-400/10">
           <input
             id={`sheets-${parameter.key}`}
@@ -529,7 +529,7 @@ function AddressField({
             }
             autoComplete="off"
             spellCheck={false}
-            className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600"
+            className="min-w-0 flex-1 bg-transparent px-3 py-1.5 text-sm text-white outline-none placeholder:text-zinc-600"
           />
           {walletOptions.length > 0 && parameter.multiple ? (
             <details className="group relative flex w-12 shrink-0 border-l border-white/10 bg-white/[0.035]">
@@ -1459,42 +1459,54 @@ export default function SheetsBuilder() {
   }
 
   return (
-    <main className="min-h-screen bg-black px-4 pb-8 pt-20 text-white sm:px-6">
+    <main className="min-h-screen bg-black px-4 pb-6 pt-18 text-white sm:px-6">
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute left-[8%] top-20 h-72 w-72 rounded-full bg-violet-600/10 blur-[110px]" />
         <div className="absolute right-[6%] top-56 h-80 w-80 rounded-full bg-blue-500/10 blur-[120px]" />
       </div>
 
       <div className="relative mx-auto max-w-[1800px]">
-        <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <div className="mb-1.5 inline-flex items-center rounded-full border border-violet-400/20 bg-violet-400/10 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.16em] text-violet-200">
+        <div className="mb-3 flex flex-col gap-1.5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <div className="inline-flex items-center rounded-full border border-violet-400/20 bg-violet-400/10 px-2.5 py-0.5 text-[9px] font-medium uppercase tracking-[0.16em] text-violet-200">
               Google Sheets helper
             </div>
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
               One value, straight into your spreadsheet
             </h1>
           </div>
-          <p className="max-w-2xl text-sm leading-5 text-zinc-500 lg:text-right">
-            Choose a source, load the data, and click a cell to copy its Google
-            Sheets formula.
+          <p className="max-w-2xl text-xs leading-4 text-zinc-500 lg:text-right">
+            Choose a source, load, and click a value to copy its formula.
           </p>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {!isAuthenticated ? (
             <div className="rounded-xl border border-amber-300/20 bg-amber-300/[0.08] px-4 py-3 text-sm text-amber-100">
               Sign in with your wallet to load data and create protected Google
               Sheets formulas.
             </div>
           ) : null}
-          <section className="rounded-xl border border-white/10 bg-white/[0.035] p-4 shadow-2xl shadow-black/30">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-medium text-white">1. Data source</h2>
-              <span className="text-xs text-zinc-500">{sheetSources.length} CSV</span>
+          <section className="rounded-xl border border-white/10 bg-white/[0.035] p-3 shadow-2xl shadow-black/30 sm:p-3.5">
+            <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <h2 className="text-sm font-medium text-white">1. Data source</h2>
+                <span className="text-[10px] text-zinc-600">{sheetSources.length} CSV</span>
+              </div>
+              <button
+                type="button"
+                onClick={loadTable}
+                disabled={loading || !isAuthenticated}
+                className="flex min-w-32 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-violet-500 to-blue-500 px-4 py-1.5 text-xs font-semibold text-white shadow-lg shadow-violet-950/30 transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60 max-sm:w-full"
+              >
+                {loading ? (
+                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                ) : null}
+                {loading ? "Loading…" : "Load table"}
+              </button>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)]">
+            <div className="grid gap-3 lg:grid-cols-[minmax(240px,300px)_minmax(0,1fr)]">
               <div>
                 <label className="block text-sm text-zinc-300">
                   Table
@@ -1517,12 +1529,12 @@ export default function SheetsBuilder() {
                   </select>
                 </label>
 
-                <p className="mt-2 text-xs leading-5 text-zinc-500">
+                <p className="mt-1.5 text-[11px] leading-4 text-zinc-500">
                   {source.description}
                 </p>
               </div>
 
-              <div className="grid content-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid content-start gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
                 {source.parameters
                   .filter(
                     (parameter) =>
@@ -1664,29 +1676,13 @@ export default function SheetsBuilder() {
               </div>
             </div>
 
-            <div className="mt-3 flex flex-col gap-3 border-t border-white/10 pt-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="max-w-2xl text-[11px] leading-4 text-zinc-600">
-                {source.id === "coinbase" ||
-                source.id === "bybit" ||
-                source.id === "binance"
-                  ? "Encrypted access keys stay in this browser. They are added only to the short formula URL and are never stored with the resource."
-                  : "Tokens and keys are added only to the formula URL and are never stored with the resource. Do not share sheets containing credentials."}
-              </p>
-
-              <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-                <button
-                  type="button"
-                  onClick={loadTable}
-                  disabled={loading || !isAuthenticated}
-                  className="flex min-w-40 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-violet-500 to-blue-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-violet-950/30 transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
-                >
-                  {loading ? (
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  ) : null}
-                  {loading ? "Loading…" : "Load table"}
-                </button>
-              </div>
-            </div>
+            <p className="mt-2 text-[10px] leading-3.5 text-zinc-600">
+              {source.id === "coinbase" ||
+              source.id === "bybit" ||
+              source.id === "binance"
+                ? "Encrypted access keys stay in this browser and are never stored with the resource."
+                : "Credentials are used only in the formula URL and are never stored with the resource."}
+            </p>
           </section>
 
           <div className="min-w-0 space-y-4">
