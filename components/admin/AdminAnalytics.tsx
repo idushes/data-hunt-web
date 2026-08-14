@@ -59,6 +59,12 @@ type QueueStatus = {
   redis: boolean;
   max_wait_seconds: number;
   providers: QueueProvider[];
+  scheduled_refresh?: {
+    enabled: boolean;
+    queued: number;
+    due: number;
+    redis?: boolean;
+  };
 };
 
 const periods: Array<[Period, string]> = [
@@ -446,6 +452,20 @@ export default function AdminAnalytics() {
                 <span className="rounded-lg border border-white/10 px-3 py-2 text-zinc-400">
                   Cooldowns <strong className="ml-1 text-white">{cooldowns}</strong>
                 </span>
+                <span className="rounded-lg border border-white/10 px-3 py-2 text-zinc-400">
+                  Refresh scheduled{" "}
+                  <strong className="ml-1 text-white">
+                    {queues?.scheduled_refresh?.queued ?? 0}
+                  </strong>
+                </span>
+                {(queues?.scheduled_refresh?.due ?? 0) > 0 ? (
+                  <span className="rounded-lg border border-amber-400/20 px-3 py-2 text-amber-300">
+                    Refresh due{" "}
+                    <strong className="ml-1">
+                      {queues?.scheduled_refresh?.due ?? 0}
+                    </strong>
+                  </span>
+                ) : null}
                 <span
                   className={`rounded-lg border px-3 py-2 ${
                     queues?.redis
