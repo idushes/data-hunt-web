@@ -10,6 +10,7 @@ type Period = 1 | 7 | 30;
 type DailyUsage = {
   date: string;
   requests: number;
+  external_requests?: number;
   users: number;
 };
 
@@ -34,6 +35,7 @@ type Analytics = {
   registered_users: number;
   active_users: number;
   requests: number;
+  external_requests?: number;
   errors: number;
   success_rate: number;
   daily: DailyUsage[];
@@ -95,6 +97,63 @@ function milliseconds(value: number) {
   if (value <= 0) return "—";
   if (value < 1000) return `${value} ms`;
   return `${(value / 1000).toFixed(value < 10000 ? 1 : 0)} s`;
+}
+
+function DailyBars({
+  title,
+  description,
+  daily,
+  value,
+  tone,
+}: {
+  title: string;
+  description: string;
+  daily: DailyUsage[];
+  value: (item: DailyUsage) => number;
+  tone: "violet" | "emerald" | "amber";
+}) {
+  const maximum = Math.max(...daily.map(value), 1);
+  const gradients = {
+    violet: "from-violet-600 to-blue-400",
+    emerald: "from-emerald-600 to-cyan-400",
+    amber: "from-amber-600 to-yellow-300",
+  };
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+      <h2 className="text-sm font-semibold">{title}</h2>
+      <p className="mt-1 text-[11px] text-zinc-600">{description}</p>
+      <div className="mt-5 flex h-32 items-end gap-1 sm:gap-1.5">
+        {daily.map((item) => {
+          const amount = value(item);
+          return (
+            <div
+              key={item.date}
+              className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5"
+              title={`${shortDate(item.date)}: ${number.format(amount)}`}
+            >
+              <div className="relative flex h-full w-full items-end overflow-hidden rounded bg-white/[0.03]">
+                <div
+                  className={`w-full rounded bg-gradient-to-t ${gradients[tone]} transition group-hover:brightness-125`}
+                  style={{
+                    height:
+                      amount > 0
+                        ? `${Math.max(5, (amount / maximum) * 100)}%`
+                        : "0%",
+                  }}
+                />
+              </div>
+              <span className="h-3 truncate text-[8px] text-zinc-600">
+                {daily.length <= 7 || item === daily.at(-1)
+                  ? shortDate(item.date)
+                  : ""}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export default function AdminAnalytics() {
@@ -174,16 +233,12 @@ export default function AdminAnalytics() {
     return () => window.clearInterval(timer);
   }, [loadQueues]);
 
-  const maxDailyRequests = Math.max(
-    ...(analytics?.daily.map((item) => item.requests) ?? [0]),
-    1,
-  );
-
   const cards = analytics
     ? [
         ["Registered users", number.format(analytics.registered_users)],
         ["Active users", number.format(analytics.active_users)],
         ["Requests", number.format(analytics.requests)],
+        ["External API calls", number.format(analytics.external_requests ?? 0)],
         ["Success rate", `${analytics.success_rate}%`],
       ]
     : [];
@@ -254,7 +309,7 @@ export default function AdminAnalytics() {
 
       {!loading && analytics ? (
         <>
-          <div className="mt-10 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="mt-10 grid grid-cols-2 gap-3 xl:grid-cols-5">
             {cards.map(([label, value]) => (
               <div
                 key={label}
@@ -268,93 +323,87 @@ export default function AdminAnalytics() {
             ))}
           </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold">Requests</h2>
-                  <p className="mt-1 text-xs text-zinc-600">UTC, including cached reads</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void load()}
-                  className="rounded-lg border border-white/10 px-3 py-2 text-xs text-zinc-400 transition hover:bg-white/10 hover:text-white"
-                >
-                  Refresh
-                </button>
+          <div className="mt-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">Daily activity</h2>
+                <p className="mt-1 text-xs text-zinc-600">UTC days</p>
               </div>
+              <button
+                type="button"
+                onClick={() => void load()}
+                className="rounded-lg border border-white/10 px-3 py-2 text-xs text-zinc-400 transition hover:bg-white/10 hover:text-white"
+              >
+                Refresh
+              </button>
+            </div>
+            <div className="grid gap-3 lg:grid-cols-3">
+              <DailyBars
+                title="Data requests"
+                description="Includes cached reads"
+                daily={analytics.daily}
+                value={(item) => item.requests}
+                tone="violet"
+              />
+              <DailyBars
+                title="External API calls"
+                description="Actual upstream HTTP attempts"
+                daily={analytics.daily}
+                value={(item) => item.external_requests ?? 0}
+                tone="emerald"
+              />
+              <DailyBars
+                title="Active users"
+                description="Unique authenticated accounts"
+                daily={analytics.daily}
+                value={(item) => item.users}
+                tone="amber"
+              />
+            </div>
+          </div>
 
-              <div className="mt-8 flex h-52 items-end gap-1.5 sm:gap-2">
-                {analytics.daily.map((item) => (
+          <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
+            <div className="border-b border-white/10 p-5 sm:p-6">
+              <h2 className="text-lg font-semibold">Top sources</h2>
+              <p className="mt-1 text-xs text-zinc-600">Requests and active users</p>
+            </div>
+            {analytics.sources.length ? (
+              <div className="divide-y divide-white/5">
+                {analytics.sources.map((source) => (
                   <div
-                    key={item.date}
-                    className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-2"
-                    title={`${shortDate(item.date)}: ${number.format(item.requests)} requests, ${number.format(item.users)} users`}
+                    key={source.source}
+                    className="grid grid-cols-[1fr_auto_auto] items-center gap-5 px-5 py-3.5 text-sm sm:px-6"
                   >
-                    <div className="relative flex h-full w-full items-end overflow-hidden rounded-md bg-white/[0.03]">
-                      <div
-                        className="w-full rounded-md bg-gradient-to-t from-violet-600 to-blue-400 transition group-hover:brightness-125"
-                        style={{
-                          height:
-                            item.requests > 0
-                              ? `${Math.max(4, (item.requests / maxDailyRequests) * 100)}%`
-                              : "0%",
-                        }}
-                      />
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-zinc-200">
+                        {source.source}
+                      </p>
+                      {source.errors > 0 && (
+                        <p className="mt-0.5 text-[10px] text-rose-400">
+                          {number.format(source.errors)} errors
+                        </p>
+                      )}
                     </div>
-                    <span className="h-3 truncate text-[9px] text-zinc-600">
-                      {analytics.daily.length <= 7 || item === analytics.daily.at(-1)
-                        ? shortDate(item.date)
-                        : ""}
-                    </span>
+                    <div className="text-right">
+                      <p className="font-medium text-white">
+                        {number.format(source.requests)}
+                      </p>
+                      <p className="text-[10px] text-zinc-600">requests</p>
+                    </div>
+                    <div className="w-12 text-right">
+                      <p className="font-medium text-zinc-300">
+                        {number.format(source.users)}
+                      </p>
+                      <p className="text-[10px] text-zinc-600">users</p>
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
-
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
-              <div className="border-b border-white/10 p-5 sm:p-6">
-                <h2 className="text-lg font-semibold">Top sources</h2>
-                <p className="mt-1 text-xs text-zinc-600">Requests and active users</p>
-              </div>
-              {analytics.sources.length ? (
-                <div className="divide-y divide-white/5">
-                  {analytics.sources.map((source) => (
-                    <div
-                      key={source.source}
-                      className="grid grid-cols-[1fr_auto_auto] items-center gap-5 px-5 py-3.5 text-sm sm:px-6"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-zinc-200">
-                          {source.source}
-                        </p>
-                        {source.errors > 0 && (
-                          <p className="mt-0.5 text-[10px] text-rose-400">
-                            {number.format(source.errors)} errors
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-white">
-                          {number.format(source.requests)}
-                        </p>
-                        <p className="text-[10px] text-zinc-600">requests</p>
-                      </div>
-                      <div className="w-12 text-right">
-                        <p className="font-medium text-zinc-300">
-                          {number.format(source.users)}
-                        </p>
-                        <p className="text-[10px] text-zinc-600">users</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="p-6 text-sm text-zinc-500">
-                  No requests recorded in this period yet.
-                </p>
-              )}
-            </div>
+            ) : (
+              <p className="p-6 text-sm text-zinc-500">
+                No requests recorded in this period yet.
+              </p>
+            )}
           </div>
 
           <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
@@ -546,7 +595,7 @@ export default function AdminAnalytics() {
           </div>
 
           <p className="mt-5 text-xs text-zinc-700">
-            Usage tracking starts from this analytics release; earlier requests are not reconstructed.
+            External API call tracking starts from this release; earlier calls are not reconstructed.
           </p>
         </>
       ) : null}
