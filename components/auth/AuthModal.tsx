@@ -6,6 +6,7 @@ import { ethers } from 'ethers';
 import {
     isUserRejectedWalletRequest,
     trackFunnelEvent,
+    walletConnectionFailureEvent,
 } from '@/components/analytics/funnelTracker';
 
 interface AuthModalProps {
@@ -49,17 +50,13 @@ export default function AuthModal({
             try {
                 accounts = await provider.send("eth_requestAccounts", []);
             } catch (error) {
-                if (isUserRejectedWalletRequest(error)) {
-                    trackFunnelEvent('wallet_connection_rejected');
-                } else {
-                    trackFunnelEvent('login_failed');
-                }
+                trackFunnelEvent(walletConnectionFailureEvent(null, error) ?? 'login_failed');
                 failureRecorded = true;
                 throw error;
             }
 
             if (accounts.length === 0) {
-                trackFunnelEvent('wallet_connection_rejected');
+                trackFunnelEvent(walletConnectionFailureEvent(accounts) ?? 'login_failed');
                 setStatus('No accounts found');
                 setLoading(false);
                 return;

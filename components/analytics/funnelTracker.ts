@@ -139,3 +139,15 @@ export function isUserRejectedWalletRequest(error: unknown) {
     (error as { code?: unknown }).code === 4001
   );
 }
+
+export function walletConnectionFailureEvent(
+  accounts: readonly unknown[] | null,
+  error?: unknown,
+): "wallet_connection_rejected" | "login_failed" | null {
+  if (error !== undefined) {
+    return isUserRejectedWalletRequest(error)
+      ? "wallet_connection_rejected"
+      : "login_failed";
+  }
+  return accounts?.length === 0 ? "login_failed" : null;
+}

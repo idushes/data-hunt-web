@@ -6,6 +6,7 @@ import {
   createUuidV4,
   getOrCreateFunnelSession,
   isUserRejectedWalletRequest,
+  walletConnectionFailureEvent,
 } from "./funnelTracker";
 
 describe("funnel tracker privacy boundary", () => {
@@ -55,5 +56,10 @@ describe("funnel tracker privacy boundary", () => {
     expect(isUserRejectedWalletRequest({ code: 4001 })).toBe(true);
     expect(isUserRejectedWalletRequest({ code: -32603 })).toBe(false);
     expect(isUserRejectedWalletRequest(new Error("rejected"))).toBe(false);
+    expect(walletConnectionFailureEvent(null, { code: 4001 })).toBe(
+      "wallet_connection_rejected",
+    );
+    expect(walletConnectionFailureEvent([])).toBe("login_failed");
+    expect(walletConnectionFailureEvent(["0xabc"])).toBeNull();
   });
 });
