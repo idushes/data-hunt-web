@@ -3,6 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ethers } from 'ethers';
+import {
+    isUserRejectedWalletRequest,
+    trackFunnelEvent,
+} from '@/components/analytics/funnelTracker';
 
 interface AuthModalProps {
     isOpen: boolean;
@@ -24,11 +28,14 @@ export default function AuthModal({
     if (!isOpen) return null;
 
     const signAndLogin = async () => {
+        trackFunnelEvent('login_clicked');
         setStatus('Initializing...');
         setLoading(true);
+        let failureRecorded = false;
 
         try {
             if (typeof window === 'undefined' || !window.ethereum) {
+                trackFunnelEvent('wallet_missing');
                 setStatus('MetaMask not installed');
                 setLoading(false);
                 return;
@@ -38,9 +45,21 @@ export default function AuthModal({
 
             // Request accounts (connect if not connected)
             setStatus('Requesting wallet connection...');
-            const accounts = await provider.send("eth_requestAccounts", []);
+            let accounts: string[];
+            try {
+                accounts = await provider.send("eth_requestAccounts", []);
+            } catch (error) {
+                if (isUserRejectedWalletRequest(error)) {
+                    trackFunnelEvent('wallet_connection_rejected');
+                } else {
+                    trackFunnelEvent('login_failed');
+                }
+                failureRecorded = true;
+                throw error;
+            }
 
             if (accounts.length === 0) {
+                trackFunnelEvent('wallet_connection_rejected');
                 setStatus('No accounts found');
                 setLoading(false);
                 return;
@@ -51,7 +70,19 @@ export default function AuthModal({
 
             const signer = await provider.getSigner();
             const message = "Login to Data Hunt Web3 Portal";
-            const signature = await signer.signMessage(message);
+            let signature: string;
+            trackFunnelEvent('signature_requested');
+            try {
+                signature = await signer.signMessage(message);
+            } catch (error) {
+                if (isUserRejectedWalletRequest(error)) {
+                    trackFunnelEvent('signature_rejected');
+                } else {
+                    trackFunnelEvent('login_failed');
+                }
+                failureRecorded = true;
+                throw error;
+            }
 
             setStatus('Verifying & Logging in...');
 
@@ -72,6 +103,7 @@ export default function AuthModal({
             const data = await response.json();
 
             if (response.ok) {
+                trackFunnelEvent('login_succeeded');
                 setStatus('Login successful!');
                 localStorage.setItem('data_hunt_token', data.access_token);
                 window.dispatchEvent(new Event('data-hunt-auth'));
@@ -85,10 +117,17 @@ export default function AuthModal({
                     }
                 }, 1000);
             } else {
+                trackFunnelEvent('login_failed');
+                failureRecorded = true;
                 setStatus(`Login failed: ${data.detail || 'Unknown error'}`);
             }
 
         } catch (error: unknown) {
+            if (!failureRecorded) {
+                // Connection/signature failures were recorded in their scoped handlers.
+                // This covers provider and network failures before a response is received.
+                trackFunnelEvent('login_failed');
+            }
             console.error(error);
             setStatus(`Error: ${error instanceof Error ? error.message : 'Failed to login'}`);
         } finally {

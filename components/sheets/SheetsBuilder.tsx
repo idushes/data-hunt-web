@@ -17,6 +17,7 @@ import {
   parseAuthorizedWallets,
   type AuthorizedWallet,
 } from "@/components/sheets/addresses";
+import { trackFunnelEvent } from "@/components/analytics/funnelTracker";
 
 const API_BASE_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? "https://hunt.data.lisacorp.com"
@@ -892,6 +893,10 @@ export default function SheetsBuilder() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
+    trackFunnelEvent("sheets_view");
+  }, []);
+
+  useEffect(() => {
     function refreshAuthentication() {
       setIsAuthenticated(Boolean(activeLoginToken()));
     }
@@ -1237,6 +1242,7 @@ export default function SheetsBuilder() {
 
       setRows(nextRows);
       setLoadedUrl(url);
+      trackFunnelEvent("table_loaded");
       if (nextRows.length === 1 && nextRows[0]?.length === 1) {
         setSelectedCell({ row: 0, column: 0 });
       }
@@ -1451,6 +1457,7 @@ export default function SheetsBuilder() {
   async function copyText(text: string, target: CopyTarget) {
     try {
       await navigator.clipboard.writeText(text);
+      if (target === "formula") trackFunnelEvent("formula_copied");
       setCopied(target);
       window.setTimeout(() => setCopied(null), 1800);
     } catch {

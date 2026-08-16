@@ -30,6 +30,17 @@ type ErrorSource = {
   error_rate: number;
 };
 
+type FunnelStep = {
+  event: string;
+  events: number;
+  sessions: number;
+};
+
+type AuthFunnel = {
+  unique_sessions: number;
+  steps: FunnelStep[];
+};
+
 type Analytics = {
   period_days: Period;
   registered_users: number;
@@ -41,6 +52,7 @@ type Analytics = {
   daily: DailyUsage[];
   sources: SourceUsage[];
   error_sources?: ErrorSource[];
+  auth_funnel?: AuthFunnel;
 };
 
 type QueueProvider = {
@@ -360,6 +372,51 @@ export default function AdminAnalytics() {
                 tone="amber"
               />
             </div>
+          </div>
+
+          <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
+            <div className="border-b border-white/10 p-5 sm:p-6">
+              <h2 className="text-lg font-semibold">Wallet auth funnel</h2>
+              <p className="mt-1 text-xs text-zinc-600">
+                Anonymous events and unique browser sessions during the selected period
+              </p>
+            </div>
+            {analytics.auth_funnel ? (
+              <div className="overflow-auto">
+                <div className="flex items-center gap-3 border-b border-white/5 px-5 py-3 text-xs sm:px-6">
+                  <span className="text-zinc-500">Unique sessions</span>
+                  <strong className="text-white">
+                    {number.format(analytics.auth_funnel.unique_sessions)}
+                  </strong>
+                </div>
+                <table className="w-full min-w-[440px] text-left text-xs">
+                  <thead className="bg-[#090909] text-zinc-600">
+                    <tr>
+                      <th className="px-5 py-3 font-medium sm:px-6">Step</th>
+                      <th className="px-4 py-3 text-right font-medium">Events</th>
+                      <th className="px-5 py-3 text-right font-medium sm:px-6">Sessions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {analytics.auth_funnel.steps.map((step) => (
+                      <tr key={step.event} className="text-zinc-300">
+                        <td className="px-5 py-3 font-medium text-white sm:px-6">
+                          {step.event.replaceAll("_", " ")}
+                        </td>
+                        <td className="px-4 py-3 text-right">{number.format(step.events)}</td>
+                        <td className="px-5 py-3 text-right sm:px-6">
+                          {number.format(step.sessions)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="p-6 text-sm text-zinc-500">
+                Funnel data becomes available after the backend update is deployed.
+              </p>
+            )}
           </div>
 
           <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
