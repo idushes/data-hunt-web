@@ -4,12 +4,17 @@ import {
   attributionFromSearch,
   buildFunnelPayload,
   createUuidV4,
+  FUNNEL_EVENT_ENDPOINT,
   getOrCreateFunnelSession,
   isUserRejectedWalletRequest,
   walletConnectionFailureEvent,
 } from "./funnelTracker";
 
 describe("funnel tracker privacy boundary", () => {
+  it("uses the neutral product event endpoint", () => {
+    expect(FUNNEL_EVENT_ENDPOINT).toBe("/product-events");
+  });
+
   it("keeps one valid anonymous UUIDv4 session in storage", () => {
     const values = new Map<string, string>();
     const storage = {

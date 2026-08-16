@@ -2,6 +2,8 @@ const API_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? "https://hunt.data.lisacorp.com"
 ).replace(/\/$/, "");
 
+export const FUNNEL_EVENT_ENDPOINT = "/product-events";
+
 const SESSION_STORAGE_KEY = "datahunt:analytics:funnel-session:v1";
 const ATTRIBUTION_SOURCES = new Set([
   "google",
@@ -117,7 +119,7 @@ export function trackFunnelEvent(event: FunnelEvent) {
   try {
     const sessionId = getOrCreateFunnelSession(localStorage, browserSessionId);
     const payload = buildFunnelPayload(event, sessionId, window.location.search);
-    void fetch(`${API_URL}/analytics/funnel/events`, {
+    void fetch(`${API_URL}${FUNNEL_EVENT_ENDPOINT}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
