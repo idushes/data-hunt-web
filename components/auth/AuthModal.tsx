@@ -8,6 +8,13 @@ import {
     trackFunnelEvent,
     walletConnectionFailureEvent,
 } from '@/components/analytics/funnelTracker';
+import { trackGoogleAdsRegistration } from '@/components/analytics/googleAdsConversion';
+
+type LoginResponse = {
+    access_token?: string;
+    detail?: string;
+    is_new_account?: boolean;
+};
 
 interface AuthModalProps {
     isOpen: boolean;
@@ -97,12 +104,15 @@ export default function AuthModal({
                 }),
             });
 
-            const data = await response.json();
+            const data = await response.json() as LoginResponse;
 
-            if (response.ok) {
+            if (response.ok && data.access_token) {
                 trackFunnelEvent('login_succeeded');
                 setStatus('Login successful!');
                 localStorage.setItem('data_hunt_token', data.access_token);
+                if (data.is_new_account === true) {
+                    trackGoogleAdsRegistration();
+                }
                 window.dispatchEvent(new Event('data-hunt-auth'));
 
                 // Close modal and redirect
