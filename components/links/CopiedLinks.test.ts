@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   credentialsFor,
+  formatRelativeTime,
   hasRequiredCredentials,
 } from "./CopiedLinks";
 import type { CopiedValueResource } from "./api";
@@ -60,5 +61,20 @@ describe("copied link credentials", () => {
 
     expect(hasRequiredCredentials(item)).toBe(true);
     expect(credentialsFor(item)).toEqual({ intx_capsule: "intx-capsule" });
+  });
+});
+
+describe("copied link relative time", () => {
+  const now = 200_000_000 * 1000;
+
+  it("keeps recent updates compact", () => {
+    expect(formatRelativeTime(199_999_980, now)).toBe("just now");
+    expect(formatRelativeTime(199_999_700, now)).toBe("5m ago");
+    expect(formatRelativeTime(199_992_800, now)).toBe("2h ago");
+  });
+
+  it("formats older updates without showing the first copied date", () => {
+    expect(formatRelativeTime(199_827_200, now)).toBe("2d ago");
+    expect(formatRelativeTime(196_112_000, now)).toBe("1mo ago");
   });
 });

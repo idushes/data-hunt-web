@@ -25,6 +25,23 @@ function formatDate(timestamp: number) {
   }).format(new Date(timestamp * 1000));
 }
 
+export function formatRelativeTime(timestamp: number, now = Date.now()) {
+  const elapsedSeconds = Math.max(0, Math.floor(now / 1000) - timestamp);
+
+  if (elapsedSeconds < 60) return "just now";
+  if (elapsedSeconds < 60 * 60) return `${Math.floor(elapsedSeconds / 60)}m ago`;
+  if (elapsedSeconds < 24 * 60 * 60) {
+    return `${Math.floor(elapsedSeconds / (60 * 60))}h ago`;
+  }
+  if (elapsedSeconds < 30 * 24 * 60 * 60) {
+    return `${Math.floor(elapsedSeconds / (24 * 60 * 60))}d ago`;
+  }
+  if (elapsedSeconds < 365 * 24 * 60 * 60) {
+    return `${Math.floor(elapsedSeconds / (30 * 24 * 60 * 60))}mo ago`;
+  }
+  return `${Math.floor(elapsedSeconds / (365 * 24 * 60 * 60))}y ago`;
+}
+
 function shortValue(value: string) {
   if (value.length <= 42) return value;
   return `${value.slice(0, 22)}…${value.slice(-14)}`;
@@ -58,6 +75,7 @@ export default function CopiedLinks() {
   const [copiedId, setCopiedId] = useState("");
   const [error, setError] = useState("");
   const [separator, setSeparator] = useState<"," | ";">(";");
+  const [now, setNow] = useState(() => Date.now());
 
   const sourceNames = useMemo(
     () => new Map(sheetSources.map((source) => [source.id, source.name])),
@@ -112,6 +130,11 @@ export default function CopiedLinks() {
       window.removeEventListener("data-hunt-auth", refreshAuth);
       window.removeEventListener("storage", handleStorage);
     };
+  }, []);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(interval);
   }, []);
 
   async function copyFormula(item: CopiedValueResource) {
@@ -172,69 +195,67 @@ export default function CopiedLinks() {
   }
 
   return (
-    <main className="min-h-screen bg-black px-4 pb-16 pt-24 text-white sm:px-6">
+    <main className="min-h-screen bg-black px-3 pb-8 pt-20 text-white sm:px-5">
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute left-[8%] top-20 h-72 w-72 rounded-full bg-violet-600/10 blur-[110px]" />
         <div className="absolute right-[6%] top-56 h-80 w-80 rounded-full bg-blue-500/10 blur-[120px]" />
       </div>
 
-      <div className="relative mx-auto max-w-7xl">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300">
-              Google Sheets
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
-              My copied links
+      <div className="relative mx-auto max-w-[1920px]">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-baseline gap-3">
+            <h1 className="shrink-0 text-xl font-semibold tracking-[-0.03em] sm:text-2xl">
+              My links
             </h1>
-            <p className="mt-2 text-sm text-zinc-500">
-              Reuse every unique value without rebuilding the formula.
+            <p className="truncate text-xs text-zinc-600 sm:text-sm">
+              Saved Google Sheets formulas
             </p>
           </div>
-          <div className="flex items-end gap-3">
-            <label className="text-xs text-zinc-500">
-              Formula separator
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-xs text-zinc-500">
+              <span className="hidden sm:inline">Separator</span>
               <select
                 value={separator}
                 onChange={(event) =>
                   setSeparator(event.target.value as "," | ";")
                 }
-                className="mt-1 block rounded-lg border border-white/10 bg-zinc-950 px-3 py-2 text-sm text-white outline-none focus:border-violet-400/60"
+                aria-label="Formula separator"
+                className="h-9 rounded-lg border border-white/10 bg-zinc-950 px-2.5 text-xs text-white outline-none focus:border-violet-400/60"
               >
-                <option value=";">Semicolon ;</option>
-                <option value=",">Comma ,</option>
+                <option value=";">Semicolon</option>
+                <option value=",">Comma</option>
               </select>
             </label>
             <Link
               href="/sheets"
-              className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-violet-100"
+              className="grid h-9 place-items-center rounded-lg bg-white px-3 text-xs font-semibold text-black transition hover:bg-violet-100"
             >
-              Open Sheets helper
+              Sheets helper
             </Link>
           </div>
         </div>
 
         {error ? (
-          <div className="mt-6 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">
+          <div className="mt-3 rounded-lg border border-red-400/20 bg-red-400/10 px-3 py-2 text-xs text-red-200">
             {error}
           </div>
         ) : null}
 
         {!isAuthenticated && !loading ? (
-          <section className="mt-8 rounded-2xl border border-amber-300/20 bg-amber-300/[0.07] p-8 text-center">
+          <section className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/[0.07] p-6 text-center">
             <h2 className="text-lg font-semibold text-amber-100">Sign in to see your links</h2>
             <p className="mt-2 text-sm text-amber-100/60">
               Your history is private and connected only to your DataHunt account.
             </p>
           </section>
         ) : loading ? (
-          <div className="mt-8 grid gap-3">
-            {[0, 1, 2].map((item) => (
-              <div key={item} className="h-32 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]" />
+          <div className="mt-4 overflow-hidden rounded-xl border border-white/10">
+            {[0, 1, 2, 3, 4, 5].map((item) => (
+              <div key={item} className="h-14 animate-pulse border-b border-white/[0.06] bg-white/[0.025] last:border-0" />
             ))}
           </div>
         ) : items.length === 0 ? (
-          <section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.025] p-10 text-center">
+          <section className="mt-4 rounded-xl border border-white/10 bg-white/[0.025] p-8 text-center">
             <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-white/5 font-mono text-zinc-500">
               fx
             </div>
@@ -245,78 +266,82 @@ export default function CopiedLinks() {
           </section>
         ) : (
           <>
-            <div className="mt-8 grid gap-3">
-              {items.map((item) => {
-                const ready = hasRequiredCredentials(item);
-                const parameterEntries = Object.entries(item.parameters);
-                return (
-                  <article
-                    key={item.id}
-                    className="rounded-2xl border border-white/10 bg-white/[0.025] p-4 sm:p-5"
-                  >
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-md border border-violet-400/20 bg-violet-400/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-violet-200">
+            <div className="mt-4 overflow-x-auto rounded-xl border border-white/10 bg-white/[0.02]">
+              <table className="w-full min-w-[980px] table-fixed text-left">
+                <thead className="border-b border-white/10 bg-white/[0.025] text-[10px] font-semibold uppercase tracking-wider text-zinc-600">
+                  <tr>
+                    <th className="w-[19%] px-3 py-2">Source</th>
+                    <th className="w-[24%] px-3 py-2">Field</th>
+                    <th className="w-[31%] px-3 py-2">Parameters</th>
+                    <th className="w-[10%] px-3 py-2">Updated</th>
+                    <th className="w-[5%] px-3 py-2 text-center">Uses</th>
+                    <th className="w-[11%] px-3 py-2 text-right">Formula</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.06]">
+                  {items.map((item) => {
+                    const ready = hasRequiredCredentials(item);
+                    const parameterSummary = Object.entries(item.parameters)
+                      .map(([name, value]) => `${name}=${value}`)
+                      .join(" · ");
+                    return (
+                      <tr key={item.id} className="h-14 transition hover:bg-white/[0.035]">
+                        <td className="px-3 py-1.5">
+                          <div className="truncate text-xs font-medium text-violet-200">
                             {sourceNames.get(item.source) ?? item.source}
-                          </span>
-                          <span className="font-mono text-xs text-zinc-600">{item.id}</span>
-                        </div>
-                        <h2 className="mt-3 truncate text-lg font-semibold text-white">
-                          {item.column ?? "Single value"}
-                        </h2>
-                        {item.key ? (
-                          <p className="mt-1 font-mono text-xs text-zinc-500" title={item.key}>
-                            {shortValue(item.key)}
-                          </p>
-                        ) : null}
-                        {parameterEntries.length > 0 ? (
-                          <div className="mt-3 flex flex-wrap gap-1.5">
-                            {parameterEntries.map(([name, value]) => (
-                              <span key={name} className="rounded-md bg-white/5 px-2 py-1 font-mono text-[10px] text-zinc-500">
-                                {name}={shortValue(value)}
-                              </span>
-                            ))}
                           </div>
-                        ) : null}
-                      </div>
-
-                      <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center">
-                        <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs sm:text-right">
-                          <span className="text-zinc-600">Last copied</span>
-                          <span className="text-zinc-400">{formatDate(item.last_copied_at)}</span>
-                          <span className="text-zinc-600">First copied</span>
-                          <span className="text-zinc-400">{formatDate(item.first_copied_at)}</span>
-                          <span className="text-zinc-600">Copies</span>
-                          <span className="font-mono text-zinc-300">{item.copy_count}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => void copyFormula(item)}
-                          disabled={copyingId === item.id || !ready}
-                          title={
-                            ready
-                              ? "Copy a fresh protected formula"
-                              : "Add this source's access key in Sheets helper first"
-                          }
-                          className="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-violet-100 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-zinc-600"
-                        >
-                          {copyingId === item.id
-                            ? "Preparing…"
-                            : copiedId === item.id
-                              ? "Formula copied"
-                              : ready
-                                ? "Copy formula"
-                                : "Access key missing"}
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
+                          <div className="mt-0.5 truncate font-mono text-[10px] text-zinc-700">
+                            {item.id}
+                          </div>
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <div className="truncate text-sm font-medium text-zinc-200">
+                            {item.column ?? "Single value"}
+                          </div>
+                          <div className="mt-0.5 truncate font-mono text-[10px] text-zinc-600" title={item.key ?? undefined}>
+                            {item.key ? shortValue(item.key) : "—"}
+                          </div>
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <div className="truncate font-mono text-[10px] text-zinc-600" title={parameterSummary || undefined}>
+                            {parameterSummary || "—"}
+                          </div>
+                        </td>
+                        <td className="px-3 py-1.5 text-xs text-zinc-400" title={formatDate(item.last_copied_at)}>
+                          {formatRelativeTime(item.last_copied_at, now)}
+                        </td>
+                        <td className="px-3 py-1.5 text-center font-mono text-xs text-zinc-500">
+                          {item.copy_count}
+                        </td>
+                        <td className="px-3 py-1.5 text-right">
+                          <button
+                            type="button"
+                            onClick={() => void copyFormula(item)}
+                            disabled={copyingId === item.id || !ready}
+                            title={
+                              ready
+                                ? "Copy a fresh protected formula"
+                                : "Add this source's access key in Sheets helper first"
+                            }
+                            className="h-8 rounded-md bg-white px-3 text-xs font-semibold text-black transition hover:bg-violet-100 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-zinc-600"
+                          >
+                            {copyingId === item.id
+                              ? "Preparing…"
+                              : copiedId === item.id
+                                ? "Copied"
+                                : ready
+                                  ? "Copy"
+                                  : "Key missing"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
 
-            <div className="mt-6 flex items-center justify-between text-xs text-zinc-600">
+            <div className="mt-3 flex items-center justify-between text-xs text-zinc-600">
               <span>
                 Showing {items.length} of {total} unique links
               </span>
