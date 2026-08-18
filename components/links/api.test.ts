@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  loadCachedValuePreviews,
   loadCopiedResources,
   recordCopiedResource,
   resourceIdFromShortUrl,
@@ -74,5 +75,35 @@ describe("copied links API", () => {
         headers: { Authorization: "Bearer login-token" },
       })
     );
+  });
+
+  it("loads cached previews without putting credentials in the URL", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ items: [] }), { status: 200 })
+    );
+
+    await loadCachedValuePreviews(
+      "login-token",
+      ["AbCdEf123456"],
+      { binance: { capsule: "encrypted-capsule" } },
+      fetcher
+    );
+
+    const [url, options] = fetcher.mock.calls[0] ?? [];
+    expect(url.toString()).toMatch(/\/value-resources\/previews$/);
+    expect(url.toString()).not.toContain("encrypted-capsule");
+    expect(options).toEqual(
+      expect.objectContaining({
+        method: "POST",
+        headers: {
+          Authorization: "Bearer login-token",
+          "Content-Type": "application/json",
+        },
+      })
+    );
+    expect(JSON.parse(options?.body?.toString() ?? "{}")).toEqual({
+      resource_ids: ["AbCdEf123456"],
+      credentials: { binance: { capsule: "encrypted-capsule" } },
+    });
   });
 });

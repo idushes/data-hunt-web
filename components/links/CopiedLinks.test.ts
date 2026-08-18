@@ -4,6 +4,7 @@ import {
   credentialsFor,
   formatRelativeTime,
   hasRequiredCredentials,
+  previewCredentialsFromBrowser,
 } from "./CopiedLinks";
 import type { CopiedValueResource } from "./api";
 
@@ -61,6 +62,16 @@ describe("copied link credentials", () => {
 
     expect(hasRequiredCredentials(item)).toBe(true);
     expect(credentialsFor(item)).toEqual({ intx_capsule: "intx-capsule" });
+  });
+
+  it("collects only locally available credentials for cached previews", () => {
+    storage.set("datahunt:binance:capsule:v1", "binance-capsule");
+    storage.set("datahunt:coinbase:intx-capsule:v1", "intx-capsule");
+
+    expect(previewCredentialsFromBrowser()).toEqual({
+      binance: { capsule: "binance-capsule" },
+      coinbase: { intx_capsule: "intx-capsule" },
+    });
   });
 });
 

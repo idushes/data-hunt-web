@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
+  type CachedValuePreview,
   type CopiedValueResource,
+  loadCachedValuePreviews,
   loadCopiedResources,
   recordCopiedResource,
 } from "./api";
@@ -17,6 +19,10 @@ import {
 } from "../sheets/browserAuth";
 
 const PAGE_SIZE = 50;
+const PREVIEW_CREDENTIAL_SOURCES = ["coinbase", "bybit", "binance"];
+
+type DisplayValueResource = CopiedValueResource &
+  Partial<Omit<CachedValuePreview, "id">>;
 
 function formatDate(timestamp: number) {
   return new Intl.DateTimeFormat(undefined, {
@@ -65,8 +71,32 @@ export function hasRequiredCredentials(item: CopiedValueResource) {
   return item.credential_parameters.every((name) => Boolean(credentials[name]));
 }
 
+export function previewCredentialsFromBrowser() {
+  const credentialsBySource = PREVIEW_CREDENTIAL_SOURCES.map<
+    [string, Record<string, string>]
+  >((source) => {
+      const credentials = Object.fromEntries(
+        Object.entries(localCredentials(source)).filter(([, value]) => value)
+      );
+      return [source, credentials];
+    });
+  return Object.fromEntries(
+    credentialsBySource.filter(
+      ([, credentials]) => Object.keys(credentials).length > 0
+    )
+  );
+}
+
+function freshnessColor(timestamp: number | null | undefined, now: number) {
+  if (!timestamp) return "bg-zinc-700";
+  const age = Math.max(0, Math.floor(now / 1000) - timestamp);
+  if (age <= 5 * 60) return "bg-emerald-400";
+  if (age <= 60 * 60) return "bg-amber-400";
+  return "bg-rose-400";
+}
+
 export default function CopiedLinks() {
-  const [items, setItems] = useState<CopiedValueResource[]>([]);
+  const [items, setItems] = useState<DisplayValueResource[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -101,7 +131,29 @@ export default function CopiedLinks() {
         limit: PAGE_SIZE,
         offset,
       });
-      setItems((current) => (append ? [...current, ...page.items] : page.items));
+      let loadedItems: DisplayValueResource[] = page.items;
+      try {
+        if (page.items.length === 0) {
+          setItems((current) => (append ? current : []));
+          setTotal(page.total);
+          return;
+        }
+        const previews = await loadCachedValuePreviews(
+          loginToken,
+          page.items.map((item) => item.id),
+          previewCredentialsFromBrowser()
+        );
+        const previewsById = new Map(
+          previews.items.map((preview) => [preview.id, preview])
+        );
+        loadedItems = page.items.map((item) => ({
+          ...item,
+          ...previewsById.get(item.id),
+        }));
+      } catch {
+        setError("Links loaded, but cached values are temporarily unavailable.");
+      }
+      setItems((current) => (append ? [...current, ...loadedItems] : loadedItems));
       setTotal(page.total);
     } catch (caught) {
       setError(
@@ -178,7 +230,9 @@ export default function CopiedLinks() {
         if (updated) {
           setItems((current) =>
             current.map((candidate) =>
-              candidate.id === updated.id ? updated : candidate
+              candidate.id === updated.id
+                ? { ...candidate, ...updated }
+                : candidate
             )
           );
         }
@@ -270,12 +324,12 @@ export default function CopiedLinks() {
               <table className="w-full min-w-[980px] table-fixed text-left">
                 <thead className="border-b border-white/10 bg-white/[0.025] text-[10px] font-semibold uppercase tracking-wider text-zinc-600">
                   <tr>
-                    <th className="w-[19%] px-3 py-2">Source</th>
-                    <th className="w-[24%] px-3 py-2">Field</th>
-                    <th className="w-[31%] px-3 py-2">Parameters</th>
-                    <th className="w-[10%] px-3 py-2">Updated</th>
-                    <th className="w-[5%] px-3 py-2 text-center">Uses</th>
-                    <th className="w-[11%] px-3 py-2 text-right">Formula</th>
+                    <th className="w-[17%] px-3 py-2">Source</th>
+                    <th className="w-[23%] px-3 py-2">Data</th>
+                    <th className="w-[17%] px-3 py-2">Current value</th>
+                    <th className="w-[26%] px-3 py-2">Parameters</th>
+                    <th className="w-[9%] px-3 py-2">Freshness</th>
+                    <th className="w-[8%] px-3 py-2 text-right">Formula</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.06]">
@@ -303,15 +357,36 @@ export default function CopiedLinks() {
                           </div>
                         </td>
                         <td className="px-3 py-1.5">
+                          <div
+                            className="truncate font-mono text-sm font-medium text-white"
+                            title={item.value ?? undefined}
+                          >
+                            {item.value === null || item.value === undefined
+                              ? "Not cached"
+                              : item.value || "empty"}
+                          </div>
+                        </td>
+                        <td className="px-3 py-1.5">
                           <div className="truncate font-mono text-[10px] text-zinc-600" title={parameterSummary || undefined}>
                             {parameterSummary || "—"}
                           </div>
                         </td>
-                        <td className="px-3 py-1.5 text-xs text-zinc-400" title={formatDate(item.last_copied_at)}>
-                          {formatRelativeTime(item.last_copied_at, now)}
-                        </td>
-                        <td className="px-3 py-1.5 text-center font-mono text-xs text-zinc-500">
-                          {item.copy_count}
+                        <td
+                          className="px-3 py-1.5 text-xs text-zinc-400"
+                          title={
+                            item.data_updated_at
+                              ? formatDate(item.data_updated_at)
+                              : "No cached value is available"
+                          }
+                        >
+                          <span className="inline-flex items-center gap-1.5">
+                            <span
+                              className={`h-1.5 w-1.5 rounded-full ${freshnessColor(item.data_updated_at, now)}`}
+                            />
+                            {item.data_updated_at
+                              ? formatRelativeTime(item.data_updated_at, now)
+                              : "No cache"}
+                          </span>
                         </td>
                         <td className="px-3 py-1.5 text-right">
                           <button

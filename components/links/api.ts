@@ -19,6 +19,17 @@ export type CopiedValueResourcesPage = {
   offset: number;
 };
 
+export type CachedValuePreview = {
+  id: string;
+  value: string | null;
+  data_updated_at: number | null;
+  cache_status: "fresh" | "stale" | "missing";
+};
+
+export type CachedValuePreviewsResponse = {
+  items: CachedValuePreview[];
+};
+
 function errorMessage(content: string) {
   try {
     const parsed = JSON.parse(content) as { detail?: unknown };
@@ -75,4 +86,24 @@ export async function loadCopiedResources(
   const content = await response.text();
   if (!response.ok) throw new Error(errorMessage(content));
   return JSON.parse(content) as CopiedValueResourcesPage;
+}
+
+export async function loadCachedValuePreviews(
+  loginToken: string,
+  resourceIds: string[],
+  credentials: Record<string, Record<string, string>>,
+  fetcher: typeof fetch = fetch
+) {
+  const response = await fetcher(`${API_BASE_URL}/value-resources/previews`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${loginToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ resource_ids: resourceIds, credentials }),
+    cache: "no-store",
+  });
+  const content = await response.text();
+  if (!response.ok) throw new Error(errorMessage(content));
+  return JSON.parse(content) as CachedValuePreviewsResponse;
 }
