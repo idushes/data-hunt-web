@@ -53,6 +53,7 @@ function PasteVisual() {
 const benefits = [
   { icon: "✓", title: "Signed access", note: "Login required" },
   { icon: "60", title: "60s cache", note: "Fewer requests" },
+  { icon: "↗", title: "Saved links", note: "Copy once, reuse anytime" },
   { icon: "🔒", title: "Private Coinbase", note: "Separate Main + Perps keys" },
   { icon: "+", title: "Multi-wallet", note: "EVM + Solana + TRON" },
 ];
@@ -151,7 +152,7 @@ export default function Features() {
           </div>
 
           <h2 className="mt-20 text-center text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl">Made for everyday use.</h2>
-          <div className="mt-10 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="mt-10 grid grid-cols-2 gap-3 lg:grid-cols-5">
             {benefits.map((benefit) => (
               <article key={benefit.title} className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 text-center sm:p-7">
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-gradient-to-br from-violet-400/20 to-blue-400/10 font-mono text-sm font-bold text-white">

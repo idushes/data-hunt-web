@@ -47,10 +47,22 @@ export default function Header() {
                         <Link href="/#sources" className="hover:text-white transition-colors">Sources</Link>
                         <Link href="/#workflow" className="hover:text-white transition-colors">How it works</Link>
                         <Link href="/requests" className="hover:text-white transition-colors">Requests</Link>
+                        {isAuthenticated ? (
+                            <Link href="/links" className="hover:text-white transition-colors">My links</Link>
+                        ) : null}
                         <Link href="/gmtrade" className="hover:text-white transition-colors">GMTRADE</Link>
                     </nav>
 
                     <div className="flex items-center gap-3 sm:gap-4">
+                        {isAuthenticated ? (
+                            <Link
+                                href="/links"
+                                aria-label="Open copied links"
+                                className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-zinc-200 transition hover:bg-white/10 md:hidden"
+                            >
+                                Links
+                            </Link>
+                        ) : null}
                         {!isAdmin ? (
                             <Link
                                 href="/requests"
