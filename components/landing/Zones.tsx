@@ -10,7 +10,7 @@ export default function Zones() {
       <div className="mx-auto max-w-7xl px-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <h2 className="text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl">
-            All your crypto. One sheet.
+            Your positions. One sheet.
           </h2>
           <p className="text-sm text-zinc-500">
             {landingSourceGroups.join(" · ")}

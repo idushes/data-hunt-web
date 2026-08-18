@@ -15,13 +15,13 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://crypto.lisacorp.com"),
-  title: "DataHunt — Live crypto data for Google Sheets",
+  title: "DataHunt — Personal DeFi positions in Google Sheets",
   description:
-    "Import DeFi positions, wallet balances, Solana vaults, exchange accounts, and token prices into Google Sheets.",
+    "Track your personal DeFi deposits, debt, APY, rewards, liquidity positions, and wallet balances in Google Sheets.",
   openGraph: {
-    title: "DataHunt — Live crypto data for Google Sheets",
+    title: "DataHunt — Personal DeFi positions in Google Sheets",
     description:
-      "Turn live crypto positions into dependable Google Sheets cells.",
+      "Track deposits, debt, APY, rewards, and liquidity positions in your own spreadsheet.",
     type: "website",
     url: "/",
     images: [
@@ -29,15 +29,15 @@ export const metadata: Metadata = {
         url: "/og.png",
         width: 1200,
         height: 630,
-        alt: "DataHunt — crypto data straight to Google Sheets",
+        alt: "DataHunt — personal DeFi positions in Google Sheets",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "DataHunt — Live crypto data for Google Sheets",
+    title: "DataHunt — Personal DeFi positions in Google Sheets",
     description:
-      "Turn live crypto positions into dependable Google Sheets cells.",
+      "Track deposits, debt, APY, rewards, and liquidity positions in your own spreadsheet.",
     images: ["/og.png"],
   },
   icons: {
