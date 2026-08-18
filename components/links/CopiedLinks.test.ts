@@ -5,6 +5,7 @@ import {
   formatRelativeTime,
   hasRequiredCredentials,
   previewCredentialsFromBrowser,
+  sortCopiedLinks,
 } from "./CopiedLinks";
 import type { CopiedValueResource } from "./api";
 
@@ -87,5 +88,43 @@ describe("copied link relative time", () => {
   it("formats older updates without showing the first copied date", () => {
     expect(formatRelativeTime(199_827_200, now)).toBe("2d ago");
     expect(formatRelativeTime(196_112_000, now)).toBe("1mo ago");
+  });
+});
+
+describe("copied link sorting", () => {
+  const cached = (
+    id: string,
+    source: string,
+    value: string | null,
+    dataUpdatedAt: number | null
+  ) => ({
+    ...baseItem,
+    id,
+    source,
+    value,
+    data_updated_at: dataUpdatedAt,
+  });
+
+  it("sorts numeric-looking cached values naturally", () => {
+    const items = [
+      cached("AbCdEf123458", "fluid", "10", 30),
+      cached("AbCdEf123457", "aave", "2", 20),
+    ];
+
+    expect(sortCopiedLinks(items, { key: "value", direction: "asc" }).map((item) => item.value)).toEqual(["2", "10"]);
+  });
+
+  it("keeps missing freshness at the bottom in either direction", () => {
+    const items = [
+      cached("AbCdEf123456", "morpho", null, null),
+      cached("AbCdEf123457", "aave", "2", 20),
+      cached("AbCdEf123458", "fluid", "10", 30),
+    ];
+
+    expect(sortCopiedLinks(items, { key: "freshness", direction: "desc" }).map((item) => item.id)).toEqual([
+      "AbCdEf123458",
+      "AbCdEf123457",
+      "AbCdEf123456",
+    ]);
   });
 });

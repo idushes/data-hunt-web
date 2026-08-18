@@ -8,6 +8,7 @@ import {
   loadCachedValuePreviews,
   loadCopiedResources,
   recordCopiedResource,
+  removeCopiedResource,
 } from "./api";
 import { sheetSources } from "../sheets/catalog";
 import { buildImportFormula, buildShortValueUrl } from "../sheets/csv";
@@ -23,6 +24,23 @@ const PREVIEW_CREDENTIAL_SOURCES = ["coinbase", "bybit", "binance"];
 
 type DisplayValueResource = CopiedValueResource &
   Partial<Omit<CachedValuePreview, "id">>;
+
+export type CopiedLinksSortKey =
+  | "source"
+  | "data"
+  | "value"
+  | "parameters"
+  | "freshness";
+
+type SortState = {
+  key: CopiedLinksSortKey;
+  direction: "asc" | "desc";
+};
+
+const valueCollator = new Intl.Collator(undefined, {
+  numeric: true,
+  sensitivity: "base",
+});
 
 function formatDate(timestamp: number) {
   return new Intl.DateTimeFormat(undefined, {
@@ -51,6 +69,93 @@ export function formatRelativeTime(timestamp: number, now = Date.now()) {
 function shortValue(value: string) {
   if (value.length <= 42) return value;
   return `${value.slice(0, 22)}…${value.slice(-14)}`;
+}
+
+function parameterSummary(item: CopiedValueResource) {
+  return Object.entries(item.parameters)
+    .map(([name, value]) => `${name}=${value}`)
+    .join(" · ");
+}
+
+export function sortCopiedLinks(
+  items: DisplayValueResource[],
+  sort: SortState,
+  sourceNames: Map<string, string> = new Map()
+) {
+  return [...items].sort((left, right) => {
+    let comparison = 0;
+    if (sort.key === "freshness") {
+      const leftValue = left.data_updated_at;
+      const rightValue = right.data_updated_at;
+      if (leftValue == null || rightValue == null) {
+        if (leftValue == null && rightValue == null) comparison = 0;
+        else return leftValue == null ? 1 : -1;
+      } else {
+        comparison = leftValue - rightValue;
+      }
+    } else {
+      const values: Record<Exclude<CopiedLinksSortKey, "freshness">, [string, string]> = {
+        source: [
+          sourceNames.get(left.source) ?? left.source,
+          sourceNames.get(right.source) ?? right.source,
+        ],
+        data: [
+          `${left.column ?? ""} ${left.key ?? ""}`,
+          `${right.column ?? ""} ${right.key ?? ""}`,
+        ],
+        value: [left.value ?? "", right.value ?? ""],
+        parameters: [parameterSummary(left), parameterSummary(right)],
+      };
+      const [leftValue, rightValue] = values[sort.key];
+      if (!leftValue || !rightValue) {
+        if (!leftValue && !rightValue) comparison = 0;
+        else return !leftValue ? 1 : -1;
+      } else {
+        comparison = valueCollator.compare(leftValue, rightValue);
+      }
+    }
+    if (comparison === 0) comparison = left.id.localeCompare(right.id);
+    return sort.direction === "asc" ? comparison : -comparison;
+  });
+}
+
+function SortableHeader({
+  label,
+  sortKey,
+  sort,
+  onSort,
+  className,
+}: {
+  label: string;
+  sortKey: CopiedLinksSortKey;
+  sort: SortState | null;
+  onSort: (key: CopiedLinksSortKey) => void;
+  className: string;
+}) {
+  const active = sort?.key === sortKey;
+  return (
+    <th
+      className={className}
+      aria-sort={
+        active
+          ? sort.direction === "asc"
+            ? "ascending"
+            : "descending"
+          : "none"
+      }
+    >
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className="inline-flex items-center gap-1 transition hover:text-zinc-300"
+      >
+        {label}
+        <span aria-hidden="true" className={active ? "text-violet-300" : "text-zinc-700"}>
+          {active ? (sort.direction === "asc" ? "↑" : "↓") : "↕"}
+        </span>
+      </button>
+    </th>
+  );
 }
 
 export function credentialsFor(item: CopiedValueResource) {
@@ -103,6 +208,9 @@ export default function CopiedLinks() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [copyingId, setCopyingId] = useState("");
   const [copiedId, setCopiedId] = useState("");
+  const [confirmRemoveId, setConfirmRemoveId] = useState("");
+  const [removingId, setRemovingId] = useState("");
+  const [sort, setSort] = useState<SortState | null>(null);
   const [error, setError] = useState("");
   const [separator, setSeparator] = useState<"," | ";">(";");
   const [now, setNow] = useState(() => Date.now());
@@ -111,6 +219,22 @@ export default function CopiedLinks() {
     () => new Map(sheetSources.map((source) => [source.id, source.name])),
     []
   );
+  const visibleItems = useMemo(
+    () => (sort ? sortCopiedLinks(items, sort, sourceNames) : items),
+    [items, sort, sourceNames]
+  );
+
+  function toggleSort(key: CopiedLinksSortKey) {
+    setSort((current) => {
+      if (current?.key === key) {
+        return {
+          key,
+          direction: current.direction === "asc" ? "desc" : "asc",
+        };
+      }
+      return { key, direction: key === "freshness" ? "desc" : "asc" };
+    });
+  }
 
   async function loadPage(offset: number, append: boolean) {
     const loginToken = activeLoginToken();
@@ -248,6 +372,30 @@ export default function CopiedLinks() {
     }
   }
 
+  async function removeLink(resourceId: string) {
+    const loginToken = activeLoginToken();
+    if (!loginToken) {
+      setIsAuthenticated(false);
+      setError("Sign in again to remove this link.");
+      return;
+    }
+
+    setRemovingId(resourceId);
+    setError("");
+    try {
+      await removeCopiedResource(resourceId, loginToken);
+      setItems((current) => current.filter((item) => item.id !== resourceId));
+      setTotal((current) => Math.max(0, current - 1));
+      setConfirmRemoveId("");
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "Unable to remove this link"
+      );
+    } finally {
+      setRemovingId("");
+    }
+  }
+
   return (
     <main className="min-h-screen bg-black px-3 pb-8 pt-20 text-white sm:px-5">
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
@@ -324,20 +472,48 @@ export default function CopiedLinks() {
               <table className="w-full min-w-[980px] table-fixed text-left">
                 <thead className="border-b border-white/10 bg-white/[0.025] text-[10px] font-semibold uppercase tracking-wider text-zinc-600">
                   <tr>
-                    <th className="w-[17%] px-3 py-2">Source</th>
-                    <th className="w-[23%] px-3 py-2">Data</th>
-                    <th className="w-[17%] px-3 py-2">Current value</th>
-                    <th className="w-[26%] px-3 py-2">Parameters</th>
-                    <th className="w-[9%] px-3 py-2">Freshness</th>
-                    <th className="w-[8%] px-3 py-2 text-right">Formula</th>
+                    <SortableHeader
+                      label="Source"
+                      sortKey="source"
+                      sort={sort}
+                      onSort={toggleSort}
+                      className="w-[16%] px-3 py-2"
+                    />
+                    <SortableHeader
+                      label="Data"
+                      sortKey="data"
+                      sort={sort}
+                      onSort={toggleSort}
+                      className="w-[21%] px-3 py-2"
+                    />
+                    <SortableHeader
+                      label="Current value"
+                      sortKey="value"
+                      sort={sort}
+                      onSort={toggleSort}
+                      className="w-[15%] px-3 py-2"
+                    />
+                    <SortableHeader
+                      label="Parameters"
+                      sortKey="parameters"
+                      sort={sort}
+                      onSort={toggleSort}
+                      className="w-[25%] px-3 py-2"
+                    />
+                    <SortableHeader
+                      label="Freshness"
+                      sortKey="freshness"
+                      sort={sort}
+                      onSort={toggleSort}
+                      className="w-[9%] px-3 py-2"
+                    />
+                    <th className="w-[14%] px-3 py-2 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.06]">
-                  {items.map((item) => {
+                  {visibleItems.map((item) => {
                     const ready = hasRequiredCredentials(item);
-                    const parameterSummary = Object.entries(item.parameters)
-                      .map(([name, value]) => `${name}=${value}`)
-                      .join(" · ");
+                    const parameters = parameterSummary(item);
                     return (
                       <tr key={item.id} className="h-14 transition hover:bg-white/[0.035]">
                         <td className="px-3 py-1.5">
@@ -367,8 +543,8 @@ export default function CopiedLinks() {
                           </div>
                         </td>
                         <td className="px-3 py-1.5">
-                          <div className="truncate font-mono text-[10px] text-zinc-600" title={parameterSummary || undefined}>
-                            {parameterSummary || "—"}
+                          <div className="truncate font-mono text-[10px] text-zinc-600" title={parameters || undefined}>
+                            {parameters || "—"}
                           </div>
                         </td>
                         <td
@@ -389,25 +565,57 @@ export default function CopiedLinks() {
                           </span>
                         </td>
                         <td className="px-3 py-1.5 text-right">
-                          <button
-                            type="button"
-                            onClick={() => void copyFormula(item)}
-                            disabled={copyingId === item.id || !ready}
-                            title={
-                              ready
-                                ? "Copy a fresh protected formula"
-                                : "Add this source's access key in Sheets helper first"
-                            }
-                            className="h-8 rounded-md bg-white px-3 text-xs font-semibold text-black transition hover:bg-violet-100 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-zinc-600"
-                          >
-                            {copyingId === item.id
-                              ? "Preparing…"
-                              : copiedId === item.id
-                                ? "Copied"
-                                : ready
-                                  ? "Copy"
-                                  : "Key missing"}
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => void copyFormula(item)}
+                              disabled={copyingId === item.id || !ready}
+                              title={
+                                ready
+                                  ? "Copy a fresh protected formula"
+                                  : "Add this source's access key in Sheets helper first"
+                              }
+                              className="h-8 rounded-md bg-white px-3 text-xs font-semibold text-black transition hover:bg-violet-100 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-zinc-600"
+                            >
+                              {copyingId === item.id
+                                ? "Preparing…"
+                                : copiedId === item.id
+                                  ? "Copied"
+                                  : ready
+                                    ? "Copy"
+                                    : "Key missing"}
+                            </button>
+                            {confirmRemoveId === item.id ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => void removeLink(item.id)}
+                                  disabled={removingId === item.id}
+                                  className="h-8 rounded-md border border-red-400/30 bg-red-400/10 px-2 text-[10px] font-semibold text-red-200 transition hover:bg-red-400/20 disabled:opacity-50"
+                                >
+                                  {removingId === item.id ? "Removing…" : "Remove?"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmRemoveId("")}
+                                  aria-label={`Cancel removing ${sourceNames.get(item.source) ?? item.source}`}
+                                  className="h-8 w-7 rounded-md border border-white/10 text-xs text-zinc-500 transition hover:bg-white/10 hover:text-white"
+                                >
+                                  ×
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setConfirmRemoveId(item.id)}
+                                aria-label={`Remove ${sourceNames.get(item.source) ?? item.source} from My links`}
+                                title="Remove from My links"
+                                className="h-8 w-8 rounded-md border border-white/10 text-sm text-zinc-600 transition hover:border-red-400/30 hover:bg-red-400/10 hover:text-red-300"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );

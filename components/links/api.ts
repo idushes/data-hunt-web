@@ -71,6 +71,23 @@ export async function recordCopiedResource(
   return JSON.parse(content) as CopiedValueResource;
 }
 
+export async function removeCopiedResource(
+  resourceId: string,
+  loginToken: string,
+  fetcher: typeof fetch = fetch
+) {
+  const response = await fetcher(
+    `${API_BASE_URL}/value-resources/${encodeURIComponent(resourceId)}/copies`,
+    {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${loginToken}` },
+      cache: "no-store",
+    }
+  );
+  const content = await response.text();
+  if (!response.ok) throw new Error(errorMessage(content));
+}
+
 export async function loadCopiedResources(
   loginToken: string,
   { limit = 50, offset = 0 }: { limit?: number; offset?: number } = {},

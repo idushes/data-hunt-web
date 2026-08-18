@@ -4,6 +4,7 @@ import {
   loadCachedValuePreviews,
   loadCopiedResources,
   recordCopiedResource,
+  removeCopiedResource,
   resourceIdFromShortUrl,
 } from "./api";
 
@@ -72,6 +73,22 @@ describe("copied links API", () => {
     expect(url.toString()).toContain("offset=50");
     expect(options).toEqual(
       expect.objectContaining({
+        headers: { Authorization: "Bearer login-token" },
+      })
+    );
+  });
+
+  it("removes only the authenticated user's copied link", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(null, { status: 204 }));
+
+    await removeCopiedResource("AbCdEf123456", "login-token", fetcher);
+
+    expect(fetcher).toHaveBeenCalledWith(
+      expect.stringMatching(/\/value-resources\/AbCdEf123456\/copies$/),
+      expect.objectContaining({
+        method: "DELETE",
         headers: { Authorization: "Bearer login-token" },
       })
     );
