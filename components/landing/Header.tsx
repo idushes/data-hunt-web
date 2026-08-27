@@ -46,6 +46,7 @@ export default function Header() {
                     <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-400">
                         <Link href="/#sources" className="hover:text-white transition-colors">Sources</Link>
                         <Link href="/#workflow" className="hover:text-white transition-colors">How it works</Link>
+                        <Link href="/#pricing" className="hover:text-white transition-colors">Pricing</Link>
                         <Link href="/requests" className="hover:text-white transition-colors">Requests</Link>
                         {isAuthenticated ? (
                             <Link href="/links" className="hover:text-white transition-colors">My links</Link>

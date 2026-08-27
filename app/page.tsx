@@ -2,6 +2,7 @@ import Header from '@/components/landing/Header';
 import Hero from '@/components/landing/Hero';
 import Zones from '@/components/landing/Zones';
 import Features from '@/components/landing/Features';
+import Pricing from '@/components/landing/Pricing';
 import Footer from '@/components/landing/Footer';
 
 export default function Home() {
@@ -11,6 +12,7 @@ export default function Home() {
       <Hero />
       <Zones />
       <Features />
+      <Pricing />
       <Footer />
     </main>
   );
