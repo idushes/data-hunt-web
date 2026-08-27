@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ethers } from 'ethers';
 import Header from '@/components/landing/Header';
+import { ACCOUNT_PLANS } from '@/components/account/plans';
 
 interface TokenInfo {
     id: string;
@@ -342,7 +343,7 @@ export default function AccountPage() {
                         <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                             Account Management
                         </h1>
-                        <p className="text-zinc-400 mt-1 text-sm">Manage your linked addresses and active sessions</p>
+                        <p className="text-zinc-400 mt-1 text-sm">Manage your plan, linked addresses, and active sessions</p>
                     </div>
                     <div className="flex items-center gap-4">
                         <button
@@ -362,6 +363,83 @@ export default function AccountPage() {
                         {status}
                     </div>
                 )}
+
+                <section aria-labelledby="plans-heading" className="space-y-5">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-200">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                                Freemium access
+                            </div>
+                            <h2 id="plans-heading" className="text-2xl font-semibold text-white">Plans</h2>
+                            <p className="mt-1 text-sm text-zinc-400">
+                                Start free. No credit card required.
+                            </p>
+                        </div>
+                        <p className="max-w-md text-xs text-zinc-600 sm:text-right">
+                            Preview pricing for the beta. Pro billing is not enabled yet.
+                        </p>
+                    </div>
+
+                    <div className="grid gap-5 lg:grid-cols-2">
+                        {ACCOUNT_PLANS.map((plan) => {
+                            const isCurrent = plan.status === 'current';
+                            return (
+                                <article
+                                    key={plan.id}
+                                    className={`relative overflow-hidden rounded-2xl border p-6 ${isCurrent
+                                        ? 'border-violet-400/35 bg-gradient-to-br from-violet-500/15 via-zinc-900/70 to-blue-500/10 shadow-[0_0_50px_rgba(139,92,246,0.08)]'
+                                        : 'border-white/10 bg-zinc-900/40'
+                                        }`}
+                                >
+                                    {isCurrent ? (
+                                        <div className="absolute right-4 top-4 rounded-full border border-violet-300/25 bg-violet-400/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-violet-200">
+                                            Current plan
+                                        </div>
+                                    ) : (
+                                        <div className="absolute right-4 top-4 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                                            Coming soon
+                                        </div>
+                                    )}
+
+                                    <div className="pr-28">
+                                        <h3 className="text-lg font-semibold text-white">{plan.name}</h3>
+                                        <p className="mt-2 min-h-10 text-sm leading-5 text-zinc-400">{plan.description}</p>
+                                    </div>
+
+                                    <div className="mt-6 flex items-end gap-2">
+                                        <span className="text-4xl font-bold tracking-tight text-white">{plan.price}</span>
+                                        <span className="pb-1 text-sm text-zinc-500">{plan.cadence}</span>
+                                    </div>
+
+                                    <div className={`mt-5 rounded-xl border px-4 py-3 ${isCurrent
+                                        ? 'border-violet-300/20 bg-violet-400/10 text-violet-100'
+                                        : 'border-white/10 bg-black/20 text-zinc-200'
+                                        }`}>
+                                        <p className="text-sm font-semibold">{plan.requestAllowance}</p>
+                                        <p className="mt-0.5 text-xs opacity-60">{plan.requestNote}</p>
+                                    </div>
+
+                                    <ul className="mt-5 space-y-2.5 text-sm text-zinc-300">
+                                        {plan.features.map((feature) => (
+                                            <li key={feature} className="flex items-start gap-2.5">
+                                                <span aria-hidden="true" className={isCurrent ? 'text-violet-300' : 'text-zinc-500'}>✓</span>
+                                                <span>{feature}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+
+                                    <div className={`mt-6 grid h-10 place-items-center rounded-lg text-sm font-semibold ${isCurrent
+                                        ? 'border border-violet-300/20 bg-violet-400/15 text-violet-100'
+                                        : 'cursor-not-allowed border border-white/10 bg-white/5 text-zinc-600'
+                                        }`}>
+                                        {isCurrent ? 'Free plan active' : 'Upgrade coming soon'}
+                                    </div>
+                                </article>
+                            );
+                        })}
+                    </div>
+                </section>
 
                 <div className="grid lg:grid-cols-2 gap-8">
                     {/* Linked Addresses */}
