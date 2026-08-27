@@ -49,6 +49,11 @@ const groups: Partial<Record<string, LandingGroup>> = {
     detail: "Unified · Funding · Positions",
     members: [],
   },
+  compound: {
+    name: "Compound III",
+    detail: "LTV · Capacity · Health factor",
+    members: [],
+  },
   binance: {
     name: "Binance",
     detail: "All wallets · Funding · Futures",

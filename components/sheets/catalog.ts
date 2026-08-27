@@ -152,7 +152,7 @@ export const sheetSources: SheetSource[] = [
     name: "Compound III positions",
     group: "DeFi",
     description:
-      "Compound III supplies, borrows, collateral, APY, USD values, and liquidation status.",
+      "Compound III supplies, borrows, collateral, APY, LTV, borrowing and liquidation capacity, health factor, USD values, and liquidation status.",
     path: "/compound/positions.csv",
     keyColumn: "position_id",
     parameters: [

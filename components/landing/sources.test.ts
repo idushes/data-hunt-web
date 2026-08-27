@@ -33,6 +33,10 @@ describe("landing sources", () => {
     const bybit = landingSources.find((source) => source.id === "bybit");
     expect(bybit?.name).toBe("Bybit");
     expect(bybit?.detail).toBe("Unified · Funding · Positions");
+
+    const compound = landingSources.find((source) => source.id === "compound");
+    expect(compound?.name).toBe("Compound III");
+    expect(compound?.detail).toBe("LTV · Capacity · Health factor");
   });
 
   it("gives every source one or more local logo assets", () => {
