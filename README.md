@@ -16,6 +16,16 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+To enable Sign in with Google, create a Google Identity Services OAuth 2.0 Web
+client and use the same public client ID in the frontend and backend:
+
+```env
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=1234567890-example.apps.googleusercontent.com
+```
+
+Add `http://localhost:3000` for local development and the production frontend
+origin to the client's Authorized JavaScript origins.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

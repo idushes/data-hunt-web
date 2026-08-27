@@ -104,7 +104,7 @@ export default function Header() {
                                 className="px-3 sm:px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all border border-white/5 backdrop-blur-sm"
                             >
                                 <span className="sm:hidden">Login</span>
-                                <span className="hidden sm:inline">Sign & Login</span>
+                                <span className="hidden sm:inline">Log in</span>
                             </button>
                         )}
                     </div>
