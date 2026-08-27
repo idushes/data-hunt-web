@@ -5,6 +5,7 @@ import {
   formatRelativeTime,
   hasRequiredCredentials,
   previewCredentialsFromBrowser,
+  requiredCredentialParameters,
   sortCopiedLinks,
 } from "./CopiedLinks";
 import type { CopiedValueResource } from "./api";
@@ -63,6 +64,31 @@ describe("copied link credentials", () => {
 
     expect(hasRequiredCredentials(item)).toBe(true);
     expect(credentialsFor(item)).toEqual({ intx_capsule: "intx-capsule" });
+  });
+
+  it("does not require an optional Lighter token when an account selector is saved", () => {
+    const item = {
+      ...baseItem,
+      source: "lighter",
+      parameters: { address: "0x6272ab4f91e0df14acb6a2a311d817381210e339" },
+      credential_parameters: ["token"],
+    };
+
+    expect(requiredCredentialParameters(item)).toEqual([]);
+    expect(hasRequiredCredentials(item)).toBe(true);
+    expect(credentialsFor(item)).toEqual({});
+  });
+
+  it("still requires a Lighter token when no account selector is saved", () => {
+    const item = {
+      ...baseItem,
+      source: "lighter",
+      parameters: { field: "total_asset_value" },
+      credential_parameters: ["token"],
+    };
+
+    expect(requiredCredentialParameters(item)).toEqual(["token"]);
+    expect(hasRequiredCredentials(item)).toBe(false);
   });
 
   it("collects only locally available credentials for cached previews", () => {

@@ -25,6 +25,7 @@ import {
 
 const PAGE_SIZE = 50;
 const PREVIEW_CREDENTIAL_SOURCES = ["coinbase", "bybit", "binance"];
+const LIGHTER_PUBLIC_ACCOUNT_PARAMETERS = ["account", "accounts", "address"];
 
 type DisplayValueResource = CopiedValueResource &
   Partial<Omit<CachedValuePreview, "id">>;
@@ -162,22 +163,35 @@ function SortableHeader({
   );
 }
 
+export function requiredCredentialParameters(item: CopiedValueResource) {
+  if (
+    item.source === "lighter" &&
+    LIGHTER_PUBLIC_ACCOUNT_PARAMETERS.some((name) =>
+      Boolean(item.parameters[name]?.trim())
+    )
+  ) {
+    return item.credential_parameters.filter((name) => name !== "token");
+  }
+  return item.credential_parameters;
+}
+
 export function credentialsFor(item: CopiedValueResource) {
   const available = localCredentials(item.source);
   return Object.fromEntries(
-    item.credential_parameters
+    requiredCredentialParameters(item)
       .map((name) => [name, available[name] ?? ""])
       .filter(([, value]) => value)
   );
 }
 
 export function hasRequiredCredentials(item: CopiedValueResource) {
-  if (item.credential_parameters.length === 0) return true;
+  const requiredParameters = requiredCredentialParameters(item);
+  if (requiredParameters.length === 0) return true;
   const credentials = credentialsFor(item);
   if (item.source === "coinbase") {
     return Boolean(credentials.capsule || credentials.intx_capsule);
   }
-  return item.credential_parameters.every((name) => Boolean(credentials[name]));
+  return requiredParameters.every((name) => Boolean(credentials[name]));
 }
 
 export function previewCredentialsFromBrowser() {
