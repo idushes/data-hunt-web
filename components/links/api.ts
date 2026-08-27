@@ -30,14 +30,63 @@ export type CachedValuePreviewsResponse = {
   items: CachedValuePreview[];
 };
 
+export type RequestedValueResource = {
+  value: string;
+  data_updated_at: number | null;
+  cache_status: "fresh" | "stale" | null;
+};
+
+export class ValueResourceRequestError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ValueResourceRequestError";
+    this.status = status;
+  }
+}
+
 function errorMessage(content: string) {
   try {
     const parsed = JSON.parse(content) as { detail?: unknown };
     if (typeof parsed.detail === "string") return parsed.detail;
+    if (parsed.detail !== undefined) return JSON.stringify(parsed.detail);
   } catch {
     // The API can return a plain-text error.
   }
   return content || "Unable to load copied links";
+}
+
+export async function requestValueResource(
+  resourceId: string,
+  credentials: Record<string, string>,
+  userToken: string,
+  fetcher: typeof fetch = fetch
+) {
+  const url = new URL(`/v/${encodeURIComponent(resourceId)}`, API_BASE_URL);
+  for (const [name, value] of Object.entries(credentials)) {
+    if (value) url.searchParams.set(name, value);
+  }
+  if (userToken) url.searchParams.set("auth_token", userToken);
+
+  const response = await fetcher(url, { cache: "no-store" });
+  const content = await response.text();
+  if (!response.ok) {
+    throw new ValueResourceRequestError(
+      response.status,
+      `HTTP ${response.status}: ${errorMessage(content)}`
+    );
+  }
+
+  const updatedAtHeader = response.headers.get("x-data-updated-at");
+  const updatedAt = updatedAtHeader ? Number(updatedAtHeader) : Number.NaN;
+  const cacheHeader = response.headers.get("x-csv-cache")?.toLowerCase();
+  return {
+    value: content.trim(),
+    data_updated_at: Number.isFinite(updatedAt) ? updatedAt : null,
+    cache_status:
+      cacheHeader === "stale" ? "stale" : cacheHeader ? "fresh" : null,
+  } satisfies RequestedValueResource;
 }
 
 export function resourceIdFromShortUrl(value: string) {

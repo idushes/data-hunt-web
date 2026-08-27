@@ -5,7 +5,9 @@ import {
   loadCopiedResources,
   recordCopiedResource,
   removeCopiedResource,
+  requestValueResource,
   resourceIdFromShortUrl,
+  ValueResourceRequestError,
 } from "./api";
 
 describe("copied links API", () => {
@@ -122,5 +124,53 @@ describe("copied links API", () => {
       resource_ids: ["AbCdEf123456"],
       credentials: { binance: { capsule: "encrypted-capsule" } },
     });
+  });
+
+  it("requests a saved value with its browser-only credentials", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response("123.45\n", {
+        status: 200,
+        headers: {
+          "x-data-updated-at": "1700000000",
+          "x-csv-cache": "MISS",
+        },
+      })
+    );
+
+    const result = await requestValueResource(
+      "AbCdEf123456",
+      { capsule: "encrypted-capsule" },
+      "sheets-token",
+      fetcher
+    );
+
+    const [request, options] = fetcher.mock.calls[0] ?? [];
+    const url = new URL(request.toString());
+    expect(url.pathname).toBe("/v/AbCdEf123456");
+    expect(url.searchParams.get("capsule")).toBe("encrypted-capsule");
+    expect(url.searchParams.get("auth_token")).toBe("sheets-token");
+    expect(options).toEqual({ cache: "no-store" });
+    expect(result).toEqual({
+      value: "123.45",
+      data_updated_at: 1700000000,
+      cache_status: "fresh",
+    });
+  });
+
+  it("surfaces the HTTP status and backend detail for a failed request", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ detail: "Compound RPC timed out" }), {
+        status: 502,
+      })
+    );
+
+    await expect(
+      requestValueResource("AbCdEf123456", {}, "sheets-token", fetcher)
+    ).rejects.toEqual(
+      expect.objectContaining<ValueResourceRequestError>({
+        status: 502,
+        message: "HTTP 502: Compound RPC timed out",
+      })
+    );
   });
 });

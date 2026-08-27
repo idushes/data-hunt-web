@@ -5,10 +5,13 @@ import { useEffect, useMemo, useState } from "react";
 import {
   type CachedValuePreview,
   type CopiedValueResource,
+  type RequestedValueResource,
   loadCachedValuePreviews,
   loadCopiedResources,
   recordCopiedResource,
   removeCopiedResource,
+  requestValueResource,
+  ValueResourceRequestError,
 } from "./api";
 import { sheetSources } from "../sheets/catalog";
 import { buildImportFormula, buildShortValueUrl } from "../sheets/csv";
@@ -16,6 +19,7 @@ import {
   API_BASE_URL,
   activeLoginToken,
   localCredentials,
+  SHEETS_ACCESS_STORAGE_KEY,
   sheetsAccessToken,
 } from "../sheets/browserAuth";
 
@@ -208,6 +212,9 @@ export default function CopiedLinks() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [copyingId, setCopyingId] = useState("");
   const [copiedId, setCopiedId] = useState("");
+  const [requestingId, setRequestingId] = useState("");
+  const [requestedId, setRequestedId] = useState("");
+  const [requestErrors, setRequestErrors] = useState<Record<string, string>>({});
   const [confirmRemoveId, setConfirmRemoveId] = useState("");
   const [removingId, setRemovingId] = useState("");
   const [sort, setSort] = useState<SortState | null>(null);
@@ -396,6 +403,108 @@ export default function CopiedLinks() {
     }
   }
 
+  async function requestValue(item: CopiedValueResource) {
+    const loginToken = activeLoginToken();
+    if (!loginToken) {
+      setIsAuthenticated(false);
+      setError("Sign in again to request this value.");
+      return;
+    }
+
+    const credentials = credentialsFor(item);
+    if (!hasRequiredCredentials(item)) {
+      setRequestErrors((current) => ({
+        ...current,
+        [item.id]: `${sourceNames.get(item.source) ?? item.source} needs an access key saved in this browser. Open Sheets helper and add it again.`,
+      }));
+      return;
+    }
+
+    setRequestingId(item.id);
+    setRequestedId("");
+    setError("");
+    setRequestErrors((current) => {
+      const next = { ...current };
+      delete next[item.id];
+      return next;
+    });
+
+    try {
+      let userToken = await sheetsAccessToken(loginToken);
+      let requested: RequestedValueResource;
+      try {
+        requested = await requestValueResource(
+          item.id,
+          credentials,
+          userToken
+        );
+      } catch (caught) {
+        if (
+          !(caught instanceof ValueResourceRequestError) ||
+          caught.status !== 401
+        ) {
+          throw caught;
+        }
+        localStorage.removeItem(SHEETS_ACCESS_STORAGE_KEY);
+        userToken = await sheetsAccessToken(loginToken);
+        requested = await requestValueResource(
+          item.id,
+          credentials,
+          userToken
+        );
+      }
+
+      let preview: CachedValuePreview | undefined;
+      try {
+        const previews = await loadCachedValuePreviews(
+          loginToken,
+          [item.id],
+          Object.keys(credentials).length > 0
+            ? { [item.source]: credentials }
+            : {}
+        );
+        preview = previews.items[0];
+      } catch {
+        // The direct response is enough to update the row if preview lookup fails.
+      }
+
+      setItems((current) =>
+        current.map((candidate) =>
+          candidate.id === item.id
+            ? {
+                ...candidate,
+                value: preview?.value ?? requested.value,
+                data_updated_at:
+                  preview?.data_updated_at ??
+                  requested.data_updated_at ??
+                  candidate.data_updated_at ??
+                  null,
+                cache_status:
+                  preview?.cache_status ??
+                  requested.cache_status ??
+                  candidate.cache_status,
+              }
+            : candidate
+        )
+      );
+      setNow(Date.now());
+      setRequestedId(item.id);
+      window.setTimeout(
+        () =>
+          setRequestedId((current) => (current === item.id ? "" : current)),
+        1800
+      );
+    } catch (caught) {
+      setRequestErrors((current) => ({
+        ...current,
+        [item.id]:
+          caught instanceof Error ? caught.message : "Unable to request this value",
+      }));
+    } finally {
+      setRequestingId("");
+    }
+  }
+
   return (
     <main className="min-h-screen bg-black px-3 pb-8 pt-20 text-white sm:px-5">
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
@@ -469,7 +578,7 @@ export default function CopiedLinks() {
         ) : (
           <>
             <div className="mt-4 overflow-x-auto rounded-xl border border-white/10 bg-white/[0.02]">
-              <table className="w-full min-w-[980px] table-fixed text-left">
+              <table className="w-full min-w-[1160px] table-fixed text-left">
                 <thead className="border-b border-white/10 bg-white/[0.025] text-[10px] font-semibold uppercase tracking-wider text-zinc-600">
                   <tr>
                     <SortableHeader
@@ -477,28 +586,28 @@ export default function CopiedLinks() {
                       sortKey="source"
                       sort={sort}
                       onSort={toggleSort}
-                      className="w-[16%] px-3 py-2"
+                      className="w-[15%] px-3 py-2"
                     />
                     <SortableHeader
                       label="Data"
                       sortKey="data"
                       sort={sort}
                       onSort={toggleSort}
-                      className="w-[21%] px-3 py-2"
+                      className="w-[19%] px-3 py-2"
                     />
                     <SortableHeader
                       label="Current value"
                       sortKey="value"
                       sort={sort}
                       onSort={toggleSort}
-                      className="w-[15%] px-3 py-2"
+                      className="w-[17%] px-3 py-2"
                     />
                     <SortableHeader
                       label="Parameters"
                       sortKey="parameters"
                       sort={sort}
                       onSort={toggleSort}
-                      className="w-[25%] px-3 py-2"
+                      className="w-[21%] px-3 py-2"
                     />
                     <SortableHeader
                       label="Freshness"
@@ -507,7 +616,7 @@ export default function CopiedLinks() {
                       onSort={toggleSort}
                       className="w-[9%] px-3 py-2"
                     />
-                    <th className="w-[14%] px-3 py-2 text-right">Actions</th>
+                    <th className="w-[19%] px-3 py-2 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.06]">
@@ -541,6 +650,15 @@ export default function CopiedLinks() {
                               ? "Not cached"
                               : item.value || "empty"}
                           </div>
+                          {requestErrors[item.id] ? (
+                            <div
+                              role="alert"
+                              className="mt-1 break-words text-[10px] leading-tight text-red-300"
+                              title={requestErrors[item.id]}
+                            >
+                              {requestErrors[item.id]}
+                            </div>
+                          ) : null}
                         </td>
                         <td className="px-3 py-1.5">
                           <div className="truncate font-mono text-[10px] text-zinc-600" title={parameters || undefined}>
@@ -568,8 +686,25 @@ export default function CopiedLinks() {
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               type="button"
+                              onClick={() => void requestValue(item)}
+                              disabled={requestingId === item.id}
+                              title="Request the value now and show any API error"
+                              className="h-8 rounded-md border border-violet-400/25 bg-violet-400/10 px-2.5 text-xs font-semibold text-violet-100 transition hover:border-violet-300/40 hover:bg-violet-400/20 disabled:cursor-wait disabled:opacity-50"
+                            >
+                              {requestingId === item.id
+                                ? "Requesting…"
+                                : requestedId === item.id
+                                  ? "Updated"
+                                  : "Request"}
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => void copyFormula(item)}
-                              disabled={copyingId === item.id || !ready}
+                              disabled={
+                                copyingId === item.id ||
+                                requestingId === item.id ||
+                                !ready
+                              }
                               title={
                                 ready
                                   ? "Copy a fresh protected formula"
