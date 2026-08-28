@@ -87,6 +87,7 @@ describe("Sheets source catalog contract", () => {
       "1",
       "42161",
       "8453",
+      "143",
     ]);
   });
 

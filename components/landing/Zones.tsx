@@ -62,7 +62,7 @@ export default function Zones() {
                 )}
                 {source.id === "stablecoins" && (
                   <p className="mt-1.5 text-[9px] uppercase tracking-[0.12em] text-zinc-500">
-                    ETH · SOL · ARB · BASE · TRON
+                    ETH · SOL · ARB · BASE · MONAD · TRON
                   </p>
                 )}
               </div>
