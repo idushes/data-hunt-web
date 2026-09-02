@@ -108,6 +108,16 @@ export default function Features() {
 
   return (
     <>
+      <section className="mx-auto max-w-7xl px-6 pb-20">
+        <div className="flex flex-col gap-6 rounded-3xl border border-pink-400/20 bg-pink-400/[0.04] p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-pink-300">New tool · Uniswap</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">Your pair. Pool yields at a glance.</h2>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-400">Compare indexed pools across networks and V2, V3, V4. Check yields and liquidity, then save your pairs for next time.</p>
+          </div>
+          <Link href="/uniswap" className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-xl bg-pink-300 px-5 text-sm font-semibold text-black transition-colors hover:bg-pink-200">Compare Uniswap yields →</Link>
+        </div>
+      </section>
       <section id="workflow" className="border-y border-white/5 bg-white/[0.015] py-20 sm:py-24">
         <div className="mx-auto max-w-7xl px-6">
           <div className="flex items-end justify-between gap-6">

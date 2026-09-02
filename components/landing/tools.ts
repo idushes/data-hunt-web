@@ -11,4 +11,10 @@ export const productTools = [
         href: '/raydium',
         tone: 'from-violet-400 to-cyan-400',
     },
+    {
+        name: 'Uniswap',
+        description: 'Find pool yields by token pair',
+        href: '/uniswap',
+        tone: 'from-pink-400 to-violet-400',
+    },
 ] as const;

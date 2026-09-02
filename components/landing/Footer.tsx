@@ -14,6 +14,7 @@ export default function Footer() {
                     <span className="text-zinc-700">Tools:</span>
                     <Link href="/gmtrade" className="transition-colors hover:text-white">GMTrade</Link>
                     <Link href="/raydium" className="transition-colors hover:text-white">Raydium</Link>
+                    <Link href="/uniswap" className="transition-colors hover:text-white">Uniswap</Link>
                     <a href="https://hunt.data.lisacorp.com/docs" className="transition-colors hover:text-white">API docs</a>
                     <span>&copy; {new Date().getFullYear()}</span>
                 </div>

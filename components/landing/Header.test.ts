@@ -32,6 +32,7 @@ describe('Header tools menu', () => {
         expect(productTools.map(({ name, href }) => ({ name, href }))).toEqual([
             { name: 'GMTrade', href: '/gmtrade' },
             { name: 'Raydium', href: '/raydium' },
+            { name: 'Uniswap', href: '/uniswap' },
         ]);
     });
 });
