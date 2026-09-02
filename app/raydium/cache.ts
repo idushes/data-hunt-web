@@ -4,10 +4,10 @@ export type RaydiumCachedRecord<T> = {
 };
 
 export const RAYDIUM_CACHE_REFRESH_MS = 5 * 60 * 1000;
-export const RAYDIUM_POOLS_CACHE_KEY = "raydium:pools-cache:v1";
+export const RAYDIUM_POOLS_CACHE_KEY = "raydium:pools-cache:v2";
 
 export function raydiumPoolCacheKey(poolId: string) {
-  return `raydium:pool-cache:v1:${encodeURIComponent(poolId.trim())}`;
+  return `raydium:pool-cache:v2:${encodeURIComponent(poolId.trim())}`;
 }
 
 export function readRaydiumCache<T>(key: string): RaydiumCachedRecord<T> | null {

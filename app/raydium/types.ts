@@ -5,6 +5,7 @@ export type RaydiumToken = {
   symbol: string;
   name: string;
   decimals: number;
+  isRwa: boolean;
 };
 
 export type RaydiumPeriodMetrics = {
@@ -34,6 +35,7 @@ export type RaydiumPool = {
   month: RaydiumPeriodMetrics;
   rewardSymbols: string[];
   hasRewards: boolean;
+  isRwa: boolean;
   tickSpacing: number | null;
   hasDynamicFee: boolean;
 };
@@ -63,11 +65,22 @@ export type RaydiumDistributionPoint = {
   tick: number;
 };
 
+export type RaydiumPricePoint = {
+  timestamp: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volumeUsd: number;
+};
+
 export type RaydiumPoolDetailResponse = {
   mode: "pool-detail";
   pool: RaydiumPool;
   liquidityHistory: RaydiumLiquidityPoint[];
   liquidityDistribution: RaydiumDistributionPoint[];
+  priceHistory: RaydiumPricePoint[];
+  priceHistoryTokenAddress: string;
   fetchedAt: string;
 };
 

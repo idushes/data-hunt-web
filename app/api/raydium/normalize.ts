@@ -3,6 +3,7 @@ import type {
   RaydiumLiquidityPoint,
   RaydiumPeriodMetrics,
   RaydiumPool,
+  RaydiumPricePoint,
   RaydiumToken,
 } from "@/app/raydium/types";
 
@@ -33,6 +34,27 @@ function nullableNumber(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+const TRUSTED_RWA_LINKS = new Set([
+  "assets.backed.fi/products",
+  "support.backpack.exchange/exchange/backpack-securities",
+]);
+
+export function isRaydiumRwaToken(value: unknown): boolean {
+  const token = asRecord(value);
+  const tips = asRecord(asRecord(token.extensions).tips);
+  const text = stringValue(tips.text).toLowerCase();
+  const rawLink = stringValue(tips.link);
+
+  if (!text.includes("tokenized equity")) return false;
+
+  try {
+    const link = new URL(rawLink);
+    return TRUSTED_RWA_LINKS.has(`${link.hostname}${link.pathname}`);
+  } catch {
+    return false;
+  }
+}
+
 function normalizeToken(value: unknown): RaydiumToken {
   const token = asRecord(value);
   const address = stringValue(token.address);
@@ -42,6 +64,7 @@ function normalizeToken(value: unknown): RaydiumToken {
     symbol: stringValue(token.symbol) || address,
     name: stringValue(token.name) || stringValue(token.symbol) || address,
     decimals: Math.max(0, Math.trunc(numberValue(token.decimals))),
+    isRwa: isRaydiumRwaToken(token),
   };
 }
 
@@ -97,12 +120,15 @@ export function normalizeRaydiumPool(value: unknown): RaydiumPool | null {
       : rewardEntries.map((reward) => reward.mint);
   const config = asRecord(pool.config);
 
+  const mintA = normalizeToken(pool.mintA ?? pool.mint1);
+  const mintB = normalizeToken(pool.mintB ?? pool.mint2);
+
   return {
     id,
     type,
     programId: stringValue(pool.programId),
-    mintA: normalizeToken(pool.mintA ?? pool.mint1),
-    mintB: normalizeToken(pool.mintB ?? pool.mint2),
+    mintA,
+    mintB,
     price: numberValue(pool.price),
     tvl: numberValue(pool.tvl),
     feeRate: numberValue(pool.feeRate),
@@ -119,12 +145,39 @@ export function normalizeRaydiumPool(value: unknown): RaydiumPool | null {
       new Set(rewardMints.map((mint) => mint.symbol).filter(Boolean))
     ),
     hasRewards: activeRewards.length > 0 || day.rewardApr > 0,
+    isRwa: mintA.isRwa || mintB.isRwa,
     tickSpacing:
       config.tickSpacing === null || config.tickSpacing === undefined
         ? null
         : numberValue(config.tickSpacing),
     hasDynamicFee: pool.hasDynamicFee === true,
   };
+}
+
+export function normalizePriceHistory(value: unknown): RaydiumPricePoint[] {
+  const attributes = asRecord(asRecord(value).attributes);
+
+  return asList(attributes.ohlcv_list)
+    .map((item) => {
+      const candle = asList(item);
+      return {
+        timestamp: numberValue(candle[0]),
+        open: numberValue(candle[1]),
+        high: numberValue(candle[2]),
+        low: numberValue(candle[3]),
+        close: numberValue(candle[4]),
+        volumeUsd: numberValue(candle[5]),
+      };
+    })
+    .filter(
+      (point) =>
+        point.timestamp > 0 &&
+        point.open > 0 &&
+        point.high > 0 &&
+        point.low > 0 &&
+        point.close > 0
+    )
+    .sort((left, right) => left.timestamp - right.timestamp);
 }
 
 export function normalizeLiquidityHistory(

@@ -18,6 +18,7 @@ import type {
   RaydiumLiquidityPoint,
   RaydiumPeriodMetrics,
   RaydiumPoolDetailResponse,
+  RaydiumPricePoint,
 } from "@/app/raydium/types";
 
 const CHART_WIDTH = 960;
@@ -167,6 +168,85 @@ function LiquidityHistoryChart({ points }: { points: RaydiumLiquidityPoint[] }) 
   );
 }
 
+function PriceHistoryChart({
+  points,
+  baseSymbol,
+  quoteSymbol,
+}: {
+  points: RaydiumPricePoint[];
+  baseSymbol: string;
+  quoteSymbol: string;
+}) {
+  const chart = useMemo(() => {
+    if (points.length < 2) return null;
+    const min = Math.min(...points.map((point) => point.low));
+    const max = Math.max(...points.map((point) => point.high));
+    const spread = Math.max(max - min, max * 0.01, Number.EPSILON);
+    const low = Math.max(0, min - spread * 0.12);
+    const high = max + spread * 0.12;
+    const innerWidth = CHART_WIDTH - CHART_MARGIN.left - CHART_MARGIN.right;
+    const innerHeight = CHART_HEIGHT - CHART_MARGIN.top - CHART_MARGIN.bottom;
+    const x = (index: number) =>
+      CHART_MARGIN.left + (index / (points.length - 1)) * innerWidth;
+    const y = (value: number) =>
+      CHART_MARGIN.top + ((high - value) / (high - low)) * innerHeight;
+    const line = points
+      .map(
+        (point, index) =>
+          `${index === 0 ? "M" : "L"}${x(index)},${y(point.close)}`
+      )
+      .join(" ");
+    const baseline = CHART_MARGIN.top + innerHeight;
+    const area = `${line} L${x(points.length - 1)},${baseline} L${x(0)},${baseline} Z`;
+
+    return { line, area, low, high, baseline };
+  }, [points]);
+
+  if (!chart) {
+    return (
+      <p className="py-20 text-center text-sm text-zinc-600">
+        Price history is not available for this pool.
+      </p>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <svg
+        viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+        className="min-w-[720px]"
+        role="img"
+        aria-label={`30 day ${baseSymbol} price in ${quoteSymbol}`}
+      >
+        <defs>
+          <linearGradient id="raydium-price-fill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.32" />
+            <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+          const y = CHART_MARGIN.top + ratio * (chart.baseline - CHART_MARGIN.top);
+          const value = chart.high - ratio * (chart.high - chart.low);
+          return (
+            <g key={ratio}>
+              <line x1={CHART_MARGIN.left} x2={CHART_WIDTH - CHART_MARGIN.right} y1={y} y2={y} stroke="rgba(255,255,255,.08)" />
+              <text x={CHART_MARGIN.left - 10} y={y + 4} textAnchor="end" fill="#71717a" fontSize="11">{formatNumber(value)}</text>
+            </g>
+          );
+        })}
+        <path d={chart.area} fill="url(#raydium-price-fill)" />
+        <path d={chart.line} fill="none" stroke="#38bdf8" strokeWidth="2.5" strokeLinejoin="round" />
+        <text x={CHART_MARGIN.left} y={CHART_HEIGHT - 14} fill="#71717a" fontSize="11">
+          {new Date(points[0].timestamp * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+        </text>
+        <text x={CHART_WIDTH - CHART_MARGIN.right} y={CHART_HEIGHT - 14} textAnchor="end" fill="#71717a" fontSize="11">
+          {new Date(points.at(-1)!.timestamp * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+        </text>
+      </svg>
+    </div>
+  );
+}
+
 function LiquidityDistributionChart({
   points,
   currentPrice,
@@ -284,6 +364,14 @@ export default function RaydiumPoolPage() {
   }, [loadData, poolId]);
 
   const pool = data?.pool;
+  const priceAsset =
+    pool && data?.priceHistoryTokenAddress === pool.mintB.address
+      ? pool.mintB
+      : pool?.mintA;
+  const priceQuote =
+    pool && priceAsset?.address === pool.mintB.address
+      ? pool.mintA
+      : pool?.mintB;
   const periods = pool
     ? ([
         ["24 hours", pool.day],
@@ -305,6 +393,11 @@ export default function RaydiumPoolPage() {
               <span className={`rounded border px-2 py-1 text-xs font-semibold ${pool?.type === "Concentrated" ? "border-violet-400/30 bg-violet-400/10 text-violet-200" : "border-cyan-400/30 bg-cyan-400/10 text-cyan-200"}`}>
                 {pool?.type === "Concentrated" ? "CLMM" : pool?.type ?? "Pool"}
               </span>
+              {pool?.isRwa && (
+                <span className="rounded border border-sky-400/30 bg-sky-400/10 px-2 py-1 text-xs font-semibold text-sky-200">
+                  RWA
+                </span>
+              )}
               <h1 className="truncate text-3xl font-bold text-white md:text-4xl">
                 {pool ? `${pool.mintA.symbol}/${pool.mintB.symbol}` : shortAddress(poolId)}
               </h1>
@@ -346,6 +439,24 @@ export default function RaydiumPoolPage() {
                     {periods.map(([label, metrics]) => <tr key={label}><td className="px-5 py-4 font-medium text-white">{label}</td><td className="px-5 py-4 font-mono text-zinc-300">{formatUsd(metrics.volume)}</td><td className="px-5 py-4 font-mono text-zinc-300">{formatUsd(metrics.volumeFee)}</td><td className="px-5 py-4 font-mono text-zinc-300">{formatPercent(metrics.feeApr)}</td><td className="px-5 py-4 font-mono text-zinc-300">{formatPercent(metrics.rewardApr)}</td><td className="px-5 py-4 font-mono text-emerald-300">{formatPercent(metrics.apr)}</td><td className="px-5 py-4 font-mono text-zinc-400">{metricRange(metrics)}</td></tr>)}
                   </tbody>
                 </table>
+              </div>
+            </section>
+
+            <section className="mt-8 rounded-lg border border-white/10 bg-zinc-950/40">
+              <div className="border-b border-white/10 p-5">
+                <h2 className="text-lg font-semibold text-white">
+                  {priceAsset?.symbol} price · last 30 days
+                </h2>
+                <p className="mt-1 text-sm text-zinc-500">
+                  Daily close in {priceQuote?.symbol}, sourced from onchain trades via GeckoTerminal.
+                </p>
+              </div>
+              <div className="p-3 md:p-5">
+                <PriceHistoryChart
+                  points={data.priceHistory}
+                  baseSymbol={priceAsset?.symbol ?? "Asset"}
+                  quoteSymbol={priceQuote?.symbol ?? "quote asset"}
+                />
               </div>
             </section>
 

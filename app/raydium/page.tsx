@@ -112,6 +112,7 @@ export default function RaydiumPage() {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("All");
   const [minimumTvl, setMinimumTvl] = useState("");
   const [rewardsOnly, setRewardsOnly] = useState(false);
+  const [rwaOnly, setRwaOnly] = useState(false);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("tvl");
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
@@ -201,17 +202,19 @@ export default function RaydiumPage() {
         const matchesType = typeFilter === "All" || pool.type === typeFilter;
         const matchesMinimum = !minimumTvl || pool.tvl >= minimum;
         const matchesRewards = !rewardsOnly || pool.hasRewards;
+        const matchesRwa = !rwaOnly || pool.isRwa;
         const matchesFavorites = !favoritesOnly || favorites.has(pool.id);
         return (
           matchesQuery &&
           matchesType &&
           matchesMinimum &&
           matchesRewards &&
+          matchesRwa &&
           matchesFavorites
         );
       })
       .sort((left, right) => sortValue(right, sortKey) - sortValue(left, sortKey));
-  }, [data, favorites, favoritesOnly, minimumTvl, query, rewardsOnly, sortKey, typeFilter]);
+  }, [data, favorites, favoritesOnly, minimumTvl, query, rewardsOnly, rwaOnly, sortKey, typeFilter]);
 
   const visibleSummary = useMemo(
     () => ({
@@ -277,7 +280,7 @@ export default function RaydiumPage() {
             </div>
           </div>
 
-          <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_auto_170px_180px_170px]">
+          <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_auto_150px_110px_170px_160px]">
             <label className="sr-only" htmlFor="raydium-search">
               Search Raydium pools
             </label>
@@ -320,6 +323,18 @@ export default function RaydiumPage() {
               placeholder="Minimum TVL"
               className="min-h-11 rounded-lg border border-zinc-800 bg-zinc-950 px-4 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-violet-500"
             />
+            <button
+              type="button"
+              onClick={() => setRwaOnly((value) => !value)}
+              aria-pressed={rwaOnly}
+              className={`min-h-11 rounded-lg border px-4 text-sm font-semibold transition-colors ${
+                rwaOnly
+                  ? "border-sky-300 bg-sky-300 text-black"
+                  : "border-zinc-800 bg-zinc-950 text-zinc-300 hover:bg-zinc-900"
+              }`}
+            >
+              RWA
+            </button>
             <button
               type="button"
               onClick={() => setRewardsOnly((value) => !value)}
@@ -453,6 +468,11 @@ export default function RaydiumPage() {
                           <span>
                             <span className="block font-semibold text-white group-hover:text-violet-200">
                               {pool.mintA.symbol}/{pool.mintB.symbol}
+                              {pool.isRwa && (
+                                <span className="ml-2 rounded border border-sky-400/30 bg-sky-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-sky-200">
+                                  RWA
+                                </span>
+                              )}
                             </span>
                             <span className="block font-mono text-xs text-zinc-600">{shortAddress(pool.id)}</span>
                           </span>

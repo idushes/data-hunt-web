@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  isRaydiumRwaToken,
   normalizeLiquidityDistribution,
   normalizeLiquidityHistory,
+  normalizePriceHistory,
   normalizeRaydiumPool,
 } from "./normalize";
 
@@ -37,6 +39,59 @@ describe("Raydium response normalization", () => {
   it("rejects unsupported pool records", () => {
     expect(normalizeRaydiumPool({ id: "pool", type: "Unknown" })).toBeNull();
     expect(normalizeRaydiumPool({ type: "Standard" })).toBeNull();
+  });
+
+  it("recognizes only issuer-tagged RWA tokens", () => {
+    const officialToken = {
+      address: "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB",
+      symbol: "TSLAx",
+      extensions: {
+        tips: {
+          text: "This is a Backed tokenized equity.",
+          link: "https://assets.backed.fi/products",
+        },
+      },
+    };
+
+    expect(isRaydiumRwaToken(officialToken)).toBe(true);
+    expect(isRaydiumRwaToken({ address: "spoof", symbol: "TSLAx" })).toBe(false);
+    expect(
+      isRaydiumRwaToken({
+        ...officialToken,
+        extensions: {
+          tips: {
+            text: "This is a Backed tokenized equity.",
+            link: "https://example.com/products",
+          },
+        },
+      })
+    ).toBe(false);
+
+    expect(
+      normalizeRaydiumPool({
+        id: "rwa-pool",
+        type: "Concentrated",
+        mintA: officialToken,
+        mintB: { address: "usdc", symbol: "USDC" },
+      })
+    ).toMatchObject({ isRwa: true, mintA: { isRwa: true } });
+  });
+
+  it("normalizes OHLCV price history in chronological order", () => {
+    expect(
+      normalizePriceHistory({
+        attributes: {
+          ohlcv_list: [
+            [2, 102, 106, 101, 104, 20_000],
+            [1, 100, 103, 99, 102, 10_000],
+            [0, 0, 0, 0, 0, 0],
+          ],
+        },
+      })
+    ).toEqual([
+      { timestamp: 1, open: 100, high: 103, low: 99, close: 102, volumeUsd: 10_000 },
+      { timestamp: 2, open: 102, high: 106, low: 101, close: 104, volumeUsd: 20_000 },
+    ]);
   });
 
   it("sorts TVL history and bounds CLMM distribution output", () => {

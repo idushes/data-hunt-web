@@ -4,6 +4,7 @@ import {
   asRecord,
   normalizeLiquidityDistribution,
   normalizeLiquidityHistory,
+  normalizePriceHistory,
   normalizeRaydiumPool,
   stringValue,
 } from "@/app/api/raydium/normalize";
@@ -12,6 +13,7 @@ import type { RaydiumPool } from "@/app/raydium/types";
 export const dynamic = "force-dynamic";
 
 const RAYDIUM_API_URL = "https://api-v3.raydium.io";
+const GECKOTERMINAL_API_URL = "https://api.geckoterminal.com/api/v2";
 const SOLANA_ADDRESS_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const CURSOR_RE = /^[A-Za-z0-9._~-]{1,256}$/;
 const RETRYABLE_STATUS_CODES = new Set([429, 502, 503, 504]);
@@ -109,6 +111,49 @@ async function fetchRaydium(
   );
 }
 
+async function fetchPriceHistory(poolId: string, tokenAddress: string) {
+  const url = new URL(
+    `networks/solana/pools/${poolId}/ohlcv/day`,
+    `${GECKOTERMINAL_API_URL}/`
+  );
+  url.searchParams.set("aggregate", "1");
+  url.searchParams.set("limit", "30");
+  url.searchParams.set("currency", "token");
+  url.searchParams.set("token", tokenAddress);
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12_000);
+
+    try {
+      const response = await fetch(url, {
+        signal: controller.signal,
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
+
+      if (RETRYABLE_STATUS_CODES.has(response.status) && attempt === 0) {
+        await wait(300);
+        continue;
+      }
+      if (!response.ok) return [];
+
+      const payload = asRecord(await response.json());
+      return normalizePriceHistory(asRecord(payload.data));
+    } catch {
+      if (attempt === 0) {
+        await wait(300);
+        continue;
+      }
+      return [];
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  return [];
+}
+
 function cacheHeaders() {
   return {
     "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
@@ -144,9 +189,16 @@ async function poolDetail(id: string) {
           )
           .catch(() => [])
       : Promise.resolve([]);
-  const [liquidityHistory, liquidityDistribution] = await Promise.all([
+  const priceHistoryTokenAddress = pool.mintA.isRwa
+    ? pool.mintA.address
+    : pool.mintB.isRwa
+      ? pool.mintB.address
+      : pool.mintA.address;
+  const priceHistoryPromise = fetchPriceHistory(id, priceHistoryTokenAddress);
+  const [liquidityHistory, liquidityDistribution, priceHistory] = await Promise.all([
     historyPromise,
     distributionPromise,
+    priceHistoryPromise,
   ]);
 
   return {
@@ -154,6 +206,8 @@ async function poolDetail(id: string) {
     pool,
     liquidityHistory,
     liquidityDistribution,
+    priceHistory,
+    priceHistoryTokenAddress,
     fetchedAt: new Date().toISOString(),
   };
 }
