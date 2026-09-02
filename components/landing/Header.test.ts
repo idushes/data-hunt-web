@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { hasAdminAccess } from './adminAccess';
+import { productTools } from './tools';
 
 describe('Header admin access', () => {
     it('shows admin access only when the protected endpoint confirms it', async () => {
@@ -23,5 +24,14 @@ describe('Header admin access', () => {
                 cache: 'no-store',
             }),
         );
+    });
+});
+
+describe('Header tools menu', () => {
+    it('exposes the supported product tools', () => {
+        expect(productTools.map(({ name, href }) => ({ name, href }))).toEqual([
+            { name: 'GMTrade', href: '/gmtrade' },
+            { name: 'Raydium', href: '/raydium' },
+        ]);
     });
 });

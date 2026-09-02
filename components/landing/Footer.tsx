@@ -11,7 +11,9 @@ export default function Footer() {
                 <div className="flex flex-wrap gap-6 text-sm text-zinc-500">
                     <Link href="/sheets" className="transition-colors hover:text-white">Sheets helper</Link>
                     <Link href="/requests" className="transition-colors hover:text-white">Feature requests</Link>
-                    <Link href="/gmtrade" className="transition-colors hover:text-white">GMTRADE</Link>
+                    <span className="text-zinc-700">Tools:</span>
+                    <Link href="/gmtrade" className="transition-colors hover:text-white">GMTrade</Link>
+                    <Link href="/raydium" className="transition-colors hover:text-white">Raydium</Link>
                     <a href="https://hunt.data.lisacorp.com/docs" className="transition-colors hover:text-white">API docs</a>
                     <span>&copy; {new Date().getFullYear()}</span>
                 </div>
