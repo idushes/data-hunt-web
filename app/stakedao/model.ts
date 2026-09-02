@@ -51,6 +51,11 @@ export function matchesStrategy(strategy: Strategy, query: string): boolean {
     ? [strategy.vault, strategy.gauge, strategy.assetAddress, ...strategy.tokens.map(token => token.address)].includes(part)
     : strategy.name.toLowerCase().includes(part) || strategy.tokens.some(token => token.symbol.toLowerCase() === part));
 }
+export function matchesMinimumTvl(tvl: number | null, minimum: string): boolean {
+  if (minimum.trim() === "") return true;
+  const threshold = finiteNumber(minimum);
+  return threshold !== null && tvl !== null && tvl >= threshold;
+}
 export function strategyUrl(strategy: Strategy) {
   return `https://app.stakedao.org/strategy?${new URLSearchParams({ protocol: strategy.protocol, vault: `${strategy.chainId}-${strategy.vault}` })}`;
 }

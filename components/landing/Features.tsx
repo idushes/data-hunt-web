@@ -113,7 +113,7 @@ export default function Features() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">New tool · Stake DAO</p>
             <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">Strategy yields. Your deposits. One view.</h2>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-400">Compare strategy APRs and boost. Sign in to load your Ethereum positions, deposited value and claimable rewards by wallet address.</p>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-400">Compare strategy APRs and boost, and filter by minimum TVL. Sign in to load your Ethereum positions, deposited value and claimable rewards by wallet address.</p>
           </div>
           <Link href="/stakedao" className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-xl bg-emerald-300 px-5 text-sm font-semibold text-black transition-colors hover:bg-emerald-200">Explore Stake DAO →</Link>
         </div>

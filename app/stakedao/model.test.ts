@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchesStrategy, normalizeStrategy, normalizeWallet, parsePositions, positionStrategy, positionTotals, savedWalletChoices, strategyUrl } from "./model";
+import { matchesMinimumTvl, matchesStrategy, normalizeStrategy, normalizeWallet, parsePositions, positionStrategy, positionTotals, savedWalletChoices, strategyUrl } from "./model";
 
 const wallet = `0x${"1".repeat(40)}`;
 const vault = `0x${"2".repeat(40)}`;
@@ -29,6 +29,29 @@ describe("Stake DAO strategy catalogue", () => {
   });
   it("constructs a fixed-origin official strategy link", () => {
     expect(strategyUrl(strategy)).toBe(`https://app.stakedao.org/strategy?protocol=curve&vault=1-${vault}`);
+  });
+});
+
+describe("Stake DAO minimum TVL filter", () => {
+  it("includes the threshold and excludes smaller strategies", () => {
+    expect(matchesMinimumTvl(1_000_000, "1000000")).toBe(true);
+    expect(matchesMinimumTvl(999_999.99, "1000000")).toBe(false);
+    expect(matchesMinimumTvl(2_000_000, "1000000")).toBe(true);
+    expect(matchesMinimumTvl(0.5, "0.5")).toBe(true);
+  });
+  it("includes all TVLs when cleared but does not treat unknown TVL as zero", () => {
+    expect(matchesMinimumTvl(null, "")).toBe(true);
+    expect(matchesMinimumTvl(0, "")).toBe(true);
+    expect(matchesMinimumTvl(0, "0")).toBe(true);
+    expect(matchesMinimumTvl(null, "0")).toBe(false);
+    expect(matchesMinimumTvl(null, "1000000")).toBe(false);
+  });
+  it.each(["-1", "Infinity", "1e999", "invalid"])("rejects invalid threshold %s", minimum => {
+    expect(matchesMinimumTvl(1_000_000, minimum)).toBe(false);
+  });
+  it("combines with pair search before pagination", () => {
+    const rows = [{ ...strategy, tvl: 500 }, { ...strategy, tvl: 2000 }, { ...strategy, name: "ETH/USDC", tvl: 3000 }];
+    expect(rows.filter(row => matchesStrategy(row, "USG") && matchesMinimumTvl(row.tvl, "1000"))).toEqual([rows[1]]);
   });
 });
 
