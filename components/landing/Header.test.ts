@@ -33,6 +33,7 @@ describe('Header tools menu', () => {
             { name: 'GMTrade', href: '/gmtrade' },
             { name: 'Raydium', href: '/raydium' },
             { name: 'Uniswap', href: '/uniswap' },
+            { name: 'Stake DAO', href: '/stakedao' },
         ]);
     });
 });

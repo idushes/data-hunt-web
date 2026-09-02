@@ -109,6 +109,14 @@ export default function Features() {
   return (
     <>
       <section className="mx-auto max-w-7xl px-6 pb-20">
+        <div className="mb-4 flex flex-col gap-6 rounded-3xl border border-emerald-400/20 bg-emerald-400/[0.04] p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">New tool · Stake DAO</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">Strategy yields. Your deposits. One view.</h2>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-400">Compare strategy APRs and boost. Sign in to load your Ethereum positions, deposited value and claimable rewards by wallet address.</p>
+          </div>
+          <Link href="/stakedao" className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-xl bg-emerald-300 px-5 text-sm font-semibold text-black transition-colors hover:bg-emerald-200">Explore Stake DAO →</Link>
+        </div>
         <div className="flex flex-col gap-6 rounded-3xl border border-pink-400/20 bg-pink-400/[0.04] p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-pink-300">New tool · Uniswap</p>

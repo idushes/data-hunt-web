@@ -17,4 +17,10 @@ export const productTools = [
         href: '/uniswap',
         tone: 'from-pink-400 to-violet-400',
     },
+    {
+        name: 'Stake DAO',
+        description: 'Strategy yields and wallet positions',
+        href: '/stakedao',
+        tone: 'from-emerald-300 to-lime-300',
+    },
 ] as const;
