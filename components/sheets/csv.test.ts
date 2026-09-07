@@ -193,6 +193,22 @@ describe("short value resources", () => {
     });
   });
 
+  it("keeps an exact DefiLlama token identifier in a scalar resource", () => {
+    const descriptor = buildValueResourceDescriptor({
+      source: "cmc-price",
+      sourceUrl:
+        "https://hunt.data.lisacorp.com/cmc/price.csv?coin=coingecko%3Apax-gold",
+      rows: [["2500.12"]],
+      rowIndex: 0,
+      columnIndex: 0,
+      credentialParameters: [],
+    });
+    expect(descriptor?.request).toEqual({
+      source: "cmc-price",
+      parameters: { coin: "coingecko:pax-gold" },
+    });
+  });
+
   it("builds a short URL with credentials and scoped user token", () => {
     expect(
       buildShortValueUrl({

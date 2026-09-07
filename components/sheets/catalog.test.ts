@@ -34,6 +34,15 @@ const publishedSources = {
 
 
 describe("Sheets source catalog contract", () => {
+  it("offers keyless DefiLlama USD prices while keeping the published source identity", () => {
+    const prices = sheetSources.find((source) => source.id === "cmc-price");
+    expect(prices?.name).toBe("DefiLlama price");
+    expect(prices?.description).toContain("USD");
+    expect(prices?.parameters).toEqual([
+      expect.objectContaining({ key: "coin", kind: "text", required: true }),
+    ]);
+  });
+
   it("does not remove or rename published sources, paths, or stable keys", () => {
     const actual = Object.fromEntries(
       sheetSources.map((source) => [

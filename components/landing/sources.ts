@@ -28,7 +28,7 @@ const visuals: Partial<Record<string, SourceVisual>> = {
   pancakeswap: { logos: ["/logos/pancakeswap.png"] },
   stablecoins: { logos: ["/logos/usdc.png", "/logos/usdt.png"] },
   stakedao: { logos: ["/logos/stakedao.webp"] },
-  "cmc-price": { logos: ["/logos/coinmarketcap.png"] },
+  "cmc-price": { logos: ["/logos/defillama.jpg"] },
   hyperliquid: { logos: ["/logos/hyperliquid.webp"] },
   lighter: { logos: ["/logos/lighter.webp"] },
   paradex: { logos: ["/logos/paradex.webp"] },
@@ -44,6 +44,11 @@ const visuals: Partial<Record<string, SourceVisual>> = {
 };
 
 const groups: Partial<Record<string, LandingGroup>> = {
+  "cmc-price": {
+    name: "DefiLlama",
+    detail: "Token prices · USD",
+    members: [],
+  },
   bybit: {
     name: "Bybit",
     detail: "Unified · Funding · Positions",
