@@ -54,6 +54,11 @@ const groups: Partial<Record<string, LandingGroup>> = {
     detail: "Unified · Funding · Positions",
     members: [],
   },
+  curve: {
+    name: "Curve WBTC loans",
+    detail: "Collateral · Debt · Health",
+    members: [],
+  },
   compound: {
     name: "Compound III",
     detail: "LTV · Capacity · Health factor",

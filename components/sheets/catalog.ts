@@ -148,6 +148,16 @@ export const sheetSources: SheetSource[] = [
     ],
   },
   {
+    id: "curve",
+    name: "Curve WBTC loan",
+    group: "DeFi",
+    description:
+      "Ethereum WBTC/crvUSD mint position: collateral, debt, health, borrow APR and soft-liquidation price range. Values in crvUSD.",
+    path: "/curve/positions.csv",
+    keyColumn: "position_id",
+    parameters: [evmAddress],
+  },
+  {
     id: "compound",
     name: "Compound III positions",
     group: "DeFi",

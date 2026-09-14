@@ -7,6 +7,7 @@ const publishedSources = {
   fluid: ["/fluid/positions.csv", "position_id"],
   aave: ["/aave/positions.csv", "position_id"],
   morpho: ["/morpho/positions.csv", "position_id"],
+  curve: ["/curve/positions.csv", "position_id"],
   compound: ["/compound/positions.csv", "position_id"],
   euler: ["/euler/positions.csv", "position_id"],
   lido: ["/lido/positions.csv", "position_id"],
