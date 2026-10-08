@@ -93,6 +93,7 @@ export const sheetSources: SheetSource[] = [
         options: [
           { label: "Ethereum", value: "1" },
           { label: "Arbitrum", value: "42161" },
+          { label: "Arc", value: "5042" },
           { label: "Avalanche", value: "43114" },
           { label: "Base", value: "8453" },
           { label: "BNB Chain", value: "56" },

@@ -44,6 +44,11 @@ const visuals: Partial<Record<string, SourceVisual>> = {
 };
 
 const groups: Partial<Record<string, LandingGroup>> = {
+  aave: {
+    name: "Aave positions",
+    detail: "V3 · V4 · Arc",
+    members: [],
+  },
   "cmc-price": {
     name: "DefiLlama",
     detail: "Token prices · USD",
