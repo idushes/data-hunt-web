@@ -2,16 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { CHAINS, capacity, csvExport, matches, number, type BorrowCatalog, type BorrowMarket, type Filters } from "./model";
+import MultiSelect from "./MultiSelect";
 
 const control = "mt-2 w-full rounded-xl border border-white/10 bg-[#111116] px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-300/60";
 const money = (value: number | null) => value === null ? "—" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
 const percent = (value: number | null) => value === null ? "—" : `${value.toFixed(2)}%`;
-const initialFilters: Filters = { chain: "All", protocol: "All", collateral: "All", debt: "All", maxApr: null, minLtv: null, minLoanUsd: 1000, availableOnly: true };
+const initialFilters: Filters = { chain: [], protocol: [], collateral: [], debt: [], maxApr: null, minLtv: null, minLoanUsd: 1000, availableOnly: true };
 type Sort = "apr" | "ltv" | "capacity" | "liquidity";
 
-function Select({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: { value: string; label: string }[] }) {
-  return <label className="block text-xs text-zinc-400">{label}<select className={control} value={value} onChange={event => onChange(event.target.value)}>{options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>;
-}
 function Metric({ label, value, note }: { label: string; value: string; note: string }) {
   return <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5"><p className="text-xs text-zinc-400">{label}</p><p className="mt-3 font-mono text-3xl tracking-tight text-cyan-200">{value}</p><p className="mt-2 truncate text-xs text-zinc-500">{note}</p></div>;
 }
@@ -64,7 +62,7 @@ export default function BorrowExplorer() {
   const protocols = [...new Set(catalog?.markets.map(m => m.protocol))].sort();
   const tokens = [...new Set(catalog?.markets.map(m => m.collateral))].sort();
   const debts = [...new Set(catalog?.markets.map(m => m.debt))].sort();
-  const coverage = (catalog?.coverage ?? []).filter(c => filters.chain === "All" || c.chain === filters.chain);
+  const coverage = (catalog?.coverage ?? []).filter(c => !filters.chain.length || filters.chain.includes(c.chain));
   const failures = coverage.filter(c => c.status === "error");
   const change = <K extends keyof Filters>(key: K, next: Filters[K]) => { setFilters(prev => ({ ...prev, [key]: next })); setLimit(40); };
   const changeSort = (next: Sort) => { if (sort === next) setDescending(v => !v); else { setSort(next); setDescending(next !== "apr"); } };
@@ -98,13 +96,14 @@ export default function BorrowExplorer() {
     </div>
 
     <div className="grid gap-4 rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:grid-cols-2 lg:grid-cols-4">
-      <Select label="Network" value={filters.chain} onChange={v => change("chain", v)} options={[{ value: "All", label: "All networks" }, ...Object.keys(CHAINS).map(value => ({ value, label: value }))]} />
-      <Select label="Protocol" value={filters.protocol} onChange={v => change("protocol", v)} options={[{ value: "All", label: "All protocols" }, ...protocols.map(value => ({ value, label: value }))]} />
-      <Select label="Collateral" value={filters.collateral} onChange={v => change("collateral", v)} options={[{ value: "All", label: "ETH + BTC families" }, { value: "ETH", label: "ETH family" }, { value: "BTC", label: "BTC family" }, ...tokens.map(value => ({ value: `token:${value}`, label: `${value} · exact token` }))]} />
-      <Select label="Borrow asset" value={filters.debt} onChange={v => change("debt", v)} options={[{ value: "All", label: "All stablecoins" }, ...debts.map(value => ({ value, label: value }))]} />
+      <MultiSelect label="Network" allLabel="All networks" value={filters.chain} onChange={v => change("chain", v)} options={Object.keys(CHAINS).map(value => ({ value, label: value }))} />
+      <MultiSelect label="Protocol" allLabel="All protocols" value={filters.protocol} onChange={v => change("protocol", v)} options={protocols.map(value => ({ value, label: value }))} />
+      <MultiSelect label="Collateral" allLabel="ETH + BTC families" value={filters.collateral} onChange={v => change("collateral", v)} options={[{ value: "ETH", label: "ETH family" }, { value: "BTC", label: "BTC family" }, ...tokens.map(value => ({ value: `token:${value}`, label: `${value} · exact token` }))]} />
+      <MultiSelect label="Borrow asset" allLabel="All stablecoins" value={filters.debt} onChange={v => change("debt", v)} options={debts.map(value => ({ value, label: value }))} />
       <label className="text-xs text-zinc-400">Maximum APR (%)<input type="number" min="0" step="0.1" placeholder="No limit" value={filters.maxApr ?? ""} onChange={e => change("maxApr", number(e.target.value))} className={control} /></label>
       <label className="text-xs text-zinc-400">Minimum LTV (%)<input type="number" min="0" max="99" step="1" placeholder="No minimum" value={filters.minLtv ?? ""} onChange={e => change("minLtv", number(e.target.value))} className={control} /></label>
       <label className="text-xs text-zinc-400">Minimum loan (USD)<input type="number" min="0" step="1" value={filters.minLoanUsd || ""} placeholder="No minimum" onChange={e => change("minLoanUsd", number(e.target.value) ?? 0)} className={control} /></label>
+      <p className="text-xs leading-5 text-zinc-500 lg:col-span-4">Select multiple options in each dropdown. An empty selection includes all options.</p>
     </div>
 
     {error ? <div role="alert" className="mt-5 rounded-xl border border-red-400/20 bg-red-400/5 p-4 text-sm text-red-200">{error} <button onClick={() => setQuery(prev => ({ ...prev, sequence: prev.sequence + 1 }))} className="ml-2 underline">Retry</button></div> : null}

@@ -48,12 +48,12 @@ export function capacity(market: BorrowMarket, collateralUsd: number, bufferPerc
   const result = market.liquidityUsd === null ? null : Math.max(0, Math.min(quoted, market.liquidityUsd));
   return result !== null && market.minimumDebtUsd !== null && result < market.minimumDebtUsd ? 0 : result;
 }
-export type Filters = { chain: string; protocol: string; collateral: string; debt: string; maxApr: number | null; minLtv: number | null; minLoanUsd: number; availableOnly: boolean };
+export type Filters = { chain: string[]; protocol: string[]; collateral: string[]; debt: string[]; maxApr: number | null; minLtv: number | null; minLoanUsd: number; availableOnly: boolean };
 export function matches(market: BorrowMarket, filters: Filters, collateralUsd: number, buffer: number): boolean {
-  return (filters.chain === "All" || market.chain === filters.chain)
-    && (filters.protocol === "All" || market.protocol === filters.protocol)
-    && (filters.collateral === "All" || (filters.collateral === "ETH" || filters.collateral === "BTC" ? family(market.collateral) === filters.collateral : market.collateral === filters.collateral.replace(/^token:/, "")))
-    && (filters.debt === "All" || market.debt === filters.debt)
+  return (!filters.chain.length || filters.chain.includes(market.chain))
+    && (!filters.protocol.length || filters.protocol.includes(market.protocol))
+    && (!filters.collateral.length || filters.collateral.some(value => value === "ETH" || value === "BTC" ? family(market.collateral) === value : market.collateral === value.replace(/^token:/, "")))
+    && (!filters.debt.length || filters.debt.includes(market.debt))
     && (filters.maxApr === null || (market.apr !== null && market.apr <= filters.maxApr))
     && (filters.minLtv === null || (market.ltv !== null && market.ltv >= filters.minLtv))
     && (filters.minLoanUsd === 0 || (capacity(market, collateralUsd, buffer) ?? 0) >= filters.minLoanUsd)

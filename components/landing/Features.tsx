@@ -113,7 +113,7 @@ export default function Features() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">New tool · Borrow</p>
             <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">ETH or BTC. Compare your borrowing power.</h2>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-400">Compare stablecoin borrowing rates, LTV and available loan amounts. Filter by network and collateral, and calculate borrowing capacity for your deposit.</p>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-400">Compare stablecoin borrowing rates, LTV and available loan amounts. Select multiple networks, protocols, collateral tokens and stablecoins, and calculate borrowing capacity for your deposit.</p>
           </div>
           <Link href="/borrow" className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-xl bg-cyan-200 px-5 text-sm font-semibold text-black transition-colors hover:bg-cyan-100">Compare borrowing markets →</Link>
         </div>
