@@ -1,5 +1,11 @@
 export const productTools = [
     {
+        name: 'Borrow',
+        description: 'Stablecoin rates, LTV and loan capacity',
+        href: '/borrow',
+        tone: 'from-cyan-200 to-blue-400',
+    },
+    {
         name: 'GMTrade',
         description: 'Pool performance and positions',
         href: '/gmtrade',

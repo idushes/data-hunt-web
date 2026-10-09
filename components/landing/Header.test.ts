@@ -30,6 +30,7 @@ describe('Header admin access', () => {
 describe('Header tools menu', () => {
     it('exposes the supported product tools', () => {
         expect(productTools.map(({ name, href }) => ({ name, href }))).toEqual([
+            { name: 'Borrow', href: '/borrow' },
             { name: 'GMTrade', href: '/gmtrade' },
             { name: 'Raydium', href: '/raydium' },
             { name: 'Uniswap', href: '/uniswap' },

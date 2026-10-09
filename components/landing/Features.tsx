@@ -109,6 +109,14 @@ export default function Features() {
   return (
     <>
       <section className="mx-auto max-w-7xl px-6 pb-20">
+        <div className="mb-4 flex flex-col gap-6 rounded-3xl border border-cyan-300/20 bg-cyan-300/[0.04] p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">New tool · Borrow</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">ETH or BTC. Compare your borrowing power.</h2>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-400">Compare stablecoin borrowing rates, LTV and available loan amounts. Filter by network and collateral, and calculate borrowing capacity for your deposit.</p>
+          </div>
+          <Link href="/borrow" className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-xl bg-cyan-200 px-5 text-sm font-semibold text-black transition-colors hover:bg-cyan-100">Compare borrowing markets →</Link>
+        </div>
         <div className="mb-4 flex flex-col gap-6 rounded-3xl border border-emerald-400/20 bg-emerald-400/[0.04] p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">New tool · Stake DAO</p>
