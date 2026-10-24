@@ -44,6 +44,11 @@ const visuals: Partial<Record<string, SourceVisual>> = {
 };
 
 const groups: Partial<Record<string, LandingGroup>> = {
+  morpho: {
+    name: "Morpho positions",
+    detail: "Markets · Vaults · Arc",
+    members: [],
+  },
   aave: {
     name: "Aave positions",
     detail: "V3 · V4 · Arc",
